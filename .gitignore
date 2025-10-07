@@ -1,0 +1,82 @@
+# ─────────────────────────────
+# Node dependencies (safety net)
+# ─────────────────────────────
+node_modules/
+**/node_modules/
+
+# ─────────────────────────────
+# Environment & secrets
+# (backend + frontend)
+# ─────────────────────────────
+.env
+.env.*
+**/.env
+**/.env.*
+
+# ─────────────────────────────
+# Build & output directories
+# ─────────────────────────────
+dist/
+build/
+**/dist/
+**/build/
+
+# ─────────────────────────────
+# Logs & runtime data
+# ─────────────────────────────
+*.log
+logs/
+**/logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ─────────────────────────────
+# IDE / Editor settings
+# ─────────────────────────────
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# ─────────────────────────────
+# OS-specific junk
+# ─────────────────────────────
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+desktop.ini
+
+# ─────────────────────────────
+# Testing & coverage
+# ─────────────────────────────
+coverage/
+**/coverage/
+.nyc_output/
+
+# ─────────────────────────────
+# Temporary / cache
+# ─────────────────────────────
+.tmp/
+.cache/
+**/.parcel-cache/
+**/.vite/
+**/.eslintcache
+
+# ─────────────────────────────
+# Docs / exports
+# ─────────────────────────────
+docs/**/*.pdf
+docs/**/*.zip
+*.bak
+*.old
+
+# ─────────────────────────────
+# Optional: Ignore system-level database dumps or backups
+# ─────────────────────────────
+*.sql
+*.tar
+*.zip
+*.gz
+*.7z
