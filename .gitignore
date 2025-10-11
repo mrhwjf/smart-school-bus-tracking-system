@@ -64,19 +64,19 @@ coverage/
 **/.vite/
 **/.eslintcache
 
-# ─────────────────────────────
-# Docs / exports
-# ─────────────────────────────
-docs/**/*.pdf
-docs/**/*.zip
-*.bak
-*.old
+# # ─────────────────────────────
+# # Docs / exports
+# # ─────────────────────────────
+# docs/**/*.pdf
+# docs/**/*.zip
+# *.bak
+# *.old
 
-# ─────────────────────────────
-# Optional: Ignore system-level database dumps or backups
-# ─────────────────────────────
-*.sql
-*.tar
-*.zip
-*.gz
-*.7z
+# # ─────────────────────────────
+# # Optional: Ignore system-level database dumps or backups
+# # ─────────────────────────────
+# *.sql
+# *.tar
+# *.zip
+# *.gz
+# *.7z
