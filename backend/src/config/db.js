@@ -1,14 +1,29 @@
-const mysql = require('mysql2/promise');
+const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
 
-const pool = mysql.createPool({
-	host: process.env.DB_HOST || 'localhost',
-	user: process.env.DB_USER || 'root',
-	password: process.env.DB_PASSWORD || '',
-	database: process.env.DB_NAME || 'bus_tracking',
-	waitForConnections: true,
-	connectionLimit: 10,
-	queueLimit: 0,
-});
+const sequelize = new Sequelize(
+	process.env.DB_NAME || 'bus_tracking',
+	process.env.DB_USER || 'root',
+	process.env.DB_PASSWORD || '',
+	{
+		host: process.env.DB_HOST || '127.0.0.1',
+		dialect: process.env.DB_DIALECT || 'mysql',
+		logging: false,
+	}
+);
 
-module.exports = pool;
+// Optional: debug
+async function testConnection() {
+	try {
+		await sequelize.authenticate();
+		console.log('Database connection established successfully.');
+	} catch (error) {
+		console.error('Unable to connect to the database:', error.message);
+	}
+}
+// testConnection(); // uncomment to check on startup
+
+module.exports = { sequelize, DataTypes };
+
+
+
