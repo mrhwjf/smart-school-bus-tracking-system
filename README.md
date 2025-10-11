@@ -1,7 +1,3 @@
-Here’s a complete and professional `README.md` you can place at the root of your **Smart School Bus Tracking System (SSB 1.0)** repository:
-
----
-
 # 🚌 Smart School Bus Tracking System (SSB 1.0)
 
 ## 📘 Overview
