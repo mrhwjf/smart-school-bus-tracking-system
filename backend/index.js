@@ -9,7 +9,6 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/v1', routes);
-app.use('/api', routes); // alias: hỗ trợ gọi /api/*
 
 // thêm: in thông tin models/associations để kiểm tra tại runtime
 const db = require('./src/models');
