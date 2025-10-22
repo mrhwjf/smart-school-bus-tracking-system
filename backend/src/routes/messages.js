@@ -1,5 +1,5 @@
 const express = require('express');
-const ctrl = require('../controllers/rolesController');
+const ctrl = require('../controllers/messagesController');
 const router = express.Router();
 
 router.get('/', ctrl.list);
