@@ -10,6 +10,14 @@ app.use(express.json());
 
 app.use('/api/v1', routes);
 
+// thêm: in thông tin models/associations để kiểm tra tại runtime
+const db = require('./src/models');
+/* eslint-disable no-console */
+console.log('Models loaded:', Object.keys(db).filter(k => typeof db[k] === 'function' || typeof db[k] === 'object'));
+console.log('Trip associations:', Object.keys(db.Trip?.associations || {}));
+console.log('Stop associations:', Object.keys(db.Stop?.associations || {}));
+console.log('TripStop model present:', !!db.TripStop);
+/* eslint-enable no-console */
 
 // Global error handler
 // eslint-disable-next-line no-unused-vars
