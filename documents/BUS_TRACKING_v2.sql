@@ -24,19 +24,17 @@ CREATE TABLE users (
   phone_number VARCHAR(20) UNIQUE,
   email VARCHAR(255) UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
+  locked BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_role_id (role_id)
-  -- foreign key moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Parent subtype: primary key equals users.user_id (one-to-one)
 CREATE TABLE parents (
   parent_id INT PRIMARY KEY,
-  relationship enum('PARENTS', 'GUARDIANS', 'RELATIVES') DEFAULT 'PARENTS',
+  relationship ENUM('PARENT', 'GUARDIAN', 'RELATIVE') DEFAULT 'PARENT',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  -- foreign key moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Driver subtype: primary key equals users.user_id (one-to-one)
@@ -45,7 +43,6 @@ CREATE TABLE drivers (
   license_number VARCHAR(50) UNIQUE NOT NULL,
   vehicle_permit VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  -- foreign key moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Students
@@ -59,13 +56,12 @@ CREATE TABLE students (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_parent_id (parent_id)
-  -- foreign key moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Buses
 CREATE TABLE buses (
   bus_id INT PRIMARY KEY AUTO_INCREMENT,
-  driver_id INT UNIQUE,
+  driver_id INT,
   plate_number VARCHAR(20) UNIQUE NOT NULL,
   model VARCHAR(100),
   status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'OUT_OF_SERVICE') DEFAULT 'ACTIVE',
@@ -73,13 +69,12 @@ CREATE TABLE buses (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_driver_id (driver_id)
-  -- foreign key moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Routes
+-- Routes: Templates for bus routes
 CREATE TABLE routes (
   route_id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL UNIQUE,
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -97,22 +92,21 @@ CREATE TABLE stops (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_route_id (route_id)
-  -- foreign key moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Trips
+-- Trips: Actual bus trips on specific routes
 CREATE TABLE trips (
   trip_id INT PRIMARY KEY AUTO_INCREMENT,
   route_id INT NOT NULL,
   bus_id INT NOT NULL,
   start_time TIMESTAMP,
   end_time TIMESTAMP,
-  status VARCHAR(50) DEFAULT 'SCHEDULED',
+  status ENUM('SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED') DEFAULT 'SCHEDULED',
+  shift ENUM('MORNING', 'AFTERNOON') DEFAULT 'MORNING',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_trip_route (route_id),
   INDEX idx_trip_bus (bus_id)
-  -- foreign keys moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Ordered mapping of stops for each trip
@@ -121,9 +115,7 @@ CREATE TABLE trip_stops (
   stop_id INT NOT NULL,
   stop_order INT DEFAULT 0,
   PRIMARY KEY (trip_id, stop_id),
-  INDEX idx_ts_trip (trip_id),
   INDEX idx_ts_stop (stop_id)
-  -- foreign keys moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Students assigned to trips (many-to-many)
@@ -131,9 +123,7 @@ CREATE TABLE trip_passengers (
   trip_id INT NOT NULL,
   student_id INT NOT NULL,
   PRIMARY KEY (trip_id, student_id),
-  INDEX idx_tp_trip (trip_id),
   INDEX idx_tp_student (student_id)
-  -- foreign keys moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Pickup records: when a student was picked up/dropped off at a stop
@@ -141,38 +131,38 @@ CREATE TABLE pickup_records (
   record_id INT PRIMARY KEY AUTO_INCREMENT,
   student_id INT NOT NULL,
   stop_id INT NOT NULL,
+  trip_id INT NOT NULL,
   status ENUM('PICKED_UP', 'DROPPED_OFF', 'MISSED', 'WAITING') DEFAULT 'WAITING',
   recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_pr_student (student_id),
-  INDEX idx_pr_stop (stop_id)
-  -- foreign keys moved to the end via ALTER TABLE
+  INDEX idx_pr_composite (student_id, stop_id, trip_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Navigation logs from buses (GPS updates)
 CREATE TABLE navigation_logs (
   update_id INT PRIMARY KEY AUTO_INCREMENT,
   bus_id INT NOT NULL,
+  trip_id INT,
   latitude DECIMAL(10,8),
   longitude DECIMAL(11,8),
   recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_nav_bus (bus_id)
-  -- foreign key moved to the end via ALTER TABLE
+  INDEX idx_nav_bus (bus_id),
+  INDEX idx_nav_trip (trip_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Messages and notifications
 CREATE TABLE messages (
   message_id INT PRIMARY KEY AUTO_INCREMENT,
+  sender_id INT,
   message_text TEXT NOT NULL,
   sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE notifications (
   notification_id INT PRIMARY KEY AUTO_INCREMENT,
-  message_id INT,
+  message_id INT NOT NULL,
   sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  type ENUM('INFO', 'ALERT', 'REMINDER', 'WARNING') DEFAULT 'INFO',
+  type ENUM('INFO', 'SUCCESS', 'ALERT', 'REMINDER', 'WARNING', 'SYSTEM') DEFAULT 'INFO',
   INDEX idx_notifications_message (message_id)
-  -- foreign key moved to the end via ALTER TABLE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Recipients of notifications
@@ -181,9 +171,7 @@ CREATE TABLE user_notifications (
   recipient_id INT NOT NULL,
   read_status BOOLEAN DEFAULT FALSE,
   PRIMARY KEY (notification_id, recipient_id),
-  INDEX idx_un_notification (notification_id),
-  INDEX idx_un_recipient (recipient_id)
-  -- foreign keys moved to the end via ALTER TABLE
+  INDEX idx_un_recipient_read (recipient_id, read_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Helpful sample data comments:
@@ -213,8 +201,8 @@ INSERT INTO drivers (driver_id, license_number, vehicle_permit) VALUES
 
 -- Parents
 INSERT INTO parents (parent_id, relationship) VALUES
-(4, 'PARENTS'),
-(5, 'PARENTS');
+(4, 'PARENT'),
+(5, 'PARENT');
 
 -- Students
 INSERT INTO students (parent_id, name, class, gender, date_of_birth) VALUES
@@ -224,7 +212,7 @@ INSERT INTO students (parent_id, name, class, gender, date_of_birth) VALUES
 
 -- Buses
 INSERT INTO buses (driver_id, plate_number, model, status, capacity) VALUES
-(2, '51B-99888', 'Hyundai County 2021', 'ACTIVE', 29),
+(2, '51B-99888', 'Hyundai County 2021', 'ACTIVE', 30),
 (3, '79A-77665', 'Thaco Town 2020', 'ACTIVE', 30);
 
 -- Routes
@@ -242,9 +230,9 @@ INSERT INTO stops (route_id, name, latitude, longitude, address, seq_index) VALU
 (2, 'Trường Tiểu học DEF', 10.773500, 106.689900, '12 Nguyễn Bỉnh Khiêm, Quận 1, TP.HCM', 3);
 
 -- Trips
-INSERT INTO trips (route_id, bus_id, start_time, end_time, status) VALUES
-(1, 1, '2025-10-11 06:30:00', '2025-10-11 07:15:00', 'COMPLETED'),
-(2, 2, '2025-10-11 06:45:00', '2025-10-11 07:30:00', 'SCHEDULED');
+INSERT INTO trips (route_id, bus_id, start_time, end_time, shift, status) VALUES
+(1, 1, '2025-10-11 06:30:00', '2025-10-11 07:15:00', 'MORNING', 'COMPLETED'),
+(2, 2, '2025-10-11 06:45:00', '2025-10-11 07:30:00', 'MORNING', 'SCHEDULED');
 
 -- Trip Stops
 INSERT INTO trip_stops (trip_id, stop_id, stop_order) VALUES
@@ -262,18 +250,18 @@ INSERT INTO trip_passengers (trip_id, student_id) VALUES
 (2, 3);
 
 -- Pickup Records
-INSERT INTO pickup_records (student_id, stop_id, status, recorded_at) VALUES
-(1, 1, 'PICKED_UP', '2025-10-11 06:40:00'),
-(1, 3, 'DROPPED_OFF', '2025-10-11 07:10:00'),
-(2, 2, 'PICKED_UP', '2025-10-11 06:45:00'),
-(2, 3, 'DROPPED_OFF', '2025-10-11 07:15:00'),
-(3, 4, 'WAITING', '2025-10-11 06:50:00');
+INSERT INTO pickup_records (student_id, stop_id, trip_id, status, recorded_at) VALUES
+(1, 1, 1, 'PICKED_UP', '2025-10-11 06:40:00'),
+(1, 3, 1, 'DROPPED_OFF', '2025-10-11 07:10:00'),
+(2, 2, 1, 'PICKED_UP', '2025-10-11 06:45:00'),
+(2, 3, 1, 'DROPPED_OFF', '2025-10-11 07:15:00'),
+(3, 4, 2, 'WAITING', '2025-10-11 06:50:00');
 
 -- Messages
-INSERT INTO messages (message_text) VALUES
-('Xe buýt Tuyến 1 đã khởi hành.'),
-('Xe buýt Tuyến 2 đang đến điểm đón Phan Văn Trị.'),
-('Học sinh Trần Quốc Huy chưa có mặt tại điểm đón.');
+INSERT INTO messages (sender_id, message_text) VALUES
+(1, 'Xe buýt Tuyến 1 đã khởi hành.'),
+(1, 'Xe buýt Tuyến 2 đang đến điểm đón Phan Văn Trị.'),
+(2, 'Học sinh Trần Quốc Huy chưa có mặt tại điểm đón.');
 
 -- Notifications
 INSERT INTO notifications (message_id, type) VALUES
@@ -288,10 +276,10 @@ INSERT INTO user_notifications (notification_id, recipient_id, read_status) VALU
 (3, 5, FALSE);
 
 -- Navigation Logs
-INSERT INTO navigation_logs (bus_id, latitude, longitude) VALUES
-(1, 10.775000, 106.698000),
-(1, 10.774000, 106.695000),
-(2, 10.808000, 106.689000);
+INSERT INTO navigation_logs (bus_id, trip_id, latitude, longitude) VALUES
+(1, 1, 10.775000, 106.698000),
+(1, 1, 10.774000, 106.695000),
+(2, 2, 10.808000, 106.689000);
  
 
 -- End of data seeding
@@ -314,11 +302,14 @@ ALTER TABLE buses
   ADD CONSTRAINT fk_buses_driver FOREIGN KEY (driver_id) REFERENCES drivers(driver_id) ON DELETE SET NULL;
 
 ALTER TABLE stops
-  ADD CONSTRAINT fk_stops_route FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE CASCADE;
+  ADD CONSTRAINT fk_stops_route FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE CASCADE,
+  ADD CONSTRAINT chk_latitude CHECK (latitude BETWEEN -90 AND 90),
+  ADD CONSTRAINT chk_longitude CHECK (longitude BETWEEN -180 AND 180);
 
 ALTER TABLE trips
   ADD CONSTRAINT fk_trips_route FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE RESTRICT,
-  ADD CONSTRAINT fk_trips_bus FOREIGN KEY (bus_id) REFERENCES buses(bus_id) ON DELETE RESTRICT;
+  ADD CONSTRAINT fk_trips_bus FOREIGN KEY (bus_id) REFERENCES buses(bus_id) ON DELETE RESTRICT,
+  ADD CONSTRAINT chk_trip_times CHECK (end_time IS NULL OR end_time > start_time);
 
 ALTER TABLE trip_stops
   ADD CONSTRAINT fk_trip_stops_trip FOREIGN KEY (trip_id) REFERENCES trips(trip_id) ON DELETE CASCADE,
@@ -330,16 +321,42 @@ ALTER TABLE trip_passengers
 
 ALTER TABLE pickup_records
   ADD CONSTRAINT fk_pickup_student FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
-  ADD CONSTRAINT fk_pickup_stop FOREIGN KEY (stop_id) REFERENCES stops(stop_id) ON DELETE RESTRICT;
+  ADD CONSTRAINT fk_pickup_stop FOREIGN KEY (stop_id) REFERENCES stops(stop_id) ON DELETE CASCADE,
+  ADD CONSTRAINT fk_pickup_trip FOREIGN KEY (trip_id) REFERENCES trips(trip_id) ON DELETE CASCADE;
 
 ALTER TABLE navigation_logs
-  ADD CONSTRAINT fk_nav_bus FOREIGN KEY (bus_id) REFERENCES buses(bus_id) ON DELETE CASCADE;
+  ADD CONSTRAINT fk_nav_bus FOREIGN KEY (bus_id) REFERENCES buses(bus_id) ON DELETE CASCADE,
+  ADD CONSTRAINT fk_nav_trip FOREIGN KEY (trip_id) REFERENCES trips(trip_id) ON DELETE CASCADE,
+  ADD CONSTRAINT chk_nav_latitude CHECK (latitude BETWEEN -90 AND 90),
+  ADD CONSTRAINT chk_nav_longitude CHECK (longitude BETWEEN -180 AND 180);
+
+ALTER TABLE messages
+  ADD CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE SET NULL;
 
 ALTER TABLE notifications
-  ADD CONSTRAINT fk_notifications_message FOREIGN KEY (message_id) REFERENCES messages(message_id) ON DELETE SET NULL;
-
+  ADD CONSTRAINT fk_notifications_message FOREIGN KEY (message_id) REFERENCES messages(message_id) ON DELETE CASCADE;
 ALTER TABLE user_notifications
   ADD CONSTRAINT fk_un_notification FOREIGN KEY (notification_id) REFERENCES notifications(notification_id) ON DELETE CASCADE,
   ADD CONSTRAINT fk_un_recipient FOREIGN KEY (recipient_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+-- Additional performance indexes for common query patterns
+-- Stops: ordered retrieval within a route
+CREATE INDEX idx_stops_route_seq ON stops(route_id, seq_index);
+
+-- Trip stops: list stops for a trip ordered by sequence
+CREATE INDEX idx_ts_trip_order ON trip_stops(trip_id, stop_order);
+
+-- Trips: status/time, route/time, bus/time filters
+CREATE INDEX idx_trips_status_start ON trips(status, start_time);
+CREATE INDEX idx_trips_route_start ON trips(route_id, start_time);
+CREATE INDEX idx_trips_bus_start ON trips(bus_id, start_time);
+
+-- Pickup records: by trip timeline and student within trip
+CREATE INDEX idx_pr_trip_time ON pickup_records(trip_id, recorded_at);
+CREATE INDEX idx_pr_student_trip ON pickup_records(student_id, trip_id);
+
+-- Navigation logs: latest points per trip/bus
+CREATE INDEX idx_nav_trip_time ON navigation_logs(trip_id, recorded_at);
+CREATE INDEX idx_nav_bus_time ON navigation_logs(bus_id, recorded_at);
 
 -- End of foreign key ALTER statements

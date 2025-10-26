@@ -1,25 +1,19 @@
+const BaseRepository = require('./baseRepository');
 const db = require('../models');
 
-module.exports = {
-	async findAll(options = {}) {
-		return db.Driver.findAll({ order: [['driver_id', 'ASC']], ...options });
-	},
-
-	async findById(driver_id, options = {}) {
-		return db.Driver.findByPk(driver_id, options);
-	},
-
-	async create(data) {
-		return db.Driver.create(data);
-	},
-
-	async update(driver_id, data) {
-		const [count] = await db.Driver.update(data, { where: { driver_id } });
-		if (count === 0) return null;
-		return this.findById(driver_id);
-	},
-
-	async remove(driver_id) {
-		return db.Driver.destroy({ where: { driver_id } });
+class DriversRepository extends BaseRepository {
+	constructor() {
+		super(db.Driver, { sortableFields: ['created_at', 'driver_id', 'license_number'] });
 	}
-};
+
+	buildWhere(filter = {}) {
+		const where = {};
+		const { driver_id, license_number, vehicle_permit } = filter;
+		if (driver_id) where.driver_id = driver_id;
+		if (license_number) where.license_number = license_number;
+		if (vehicle_permit) where.vehicle_permit = vehicle_permit;
+		return where;
+	}
+}
+
+module.exports = new DriversRepository();

@@ -1,4 +1,4 @@
-const { sequelize, DataTypes } = require('../config/db');
+const { sequelize, DataTypes } = require('../config/dbConfig');
 
 const db = {};
 
@@ -7,22 +7,22 @@ db.DataTypes = DataTypes;
 
 // Models
 
-db.Role = require('./roles')(sequelize, DataTypes);
-db.User = require('./users')(sequelize, DataTypes);
-db.Parent = require('./parents')(sequelize, DataTypes);
-db.Driver = require('./drivers')(sequelize, DataTypes);
-db.Student = require('./students')(sequelize, DataTypes);
-db.Bus = require('./buses')(sequelize, DataTypes);
-db.Route = require('./routes')(sequelize, DataTypes);
-db.Stop = require('./stops')(sequelize, DataTypes);
-db.Trip = require('./trips')(sequelize, DataTypes);
-db.TripStop = require('./tripStops')(sequelize, DataTypes);
-db.TripPassenger = require('./tripPassengers')(sequelize, DataTypes);
-db.PickupRecord = require('./pickupRecords')(sequelize, DataTypes);
-db.NavigationLog = require('./navigationLogs')(sequelize, DataTypes);
-db.Message = require('./messages')(sequelize, DataTypes);
-db.Notification = require('./notifications')(sequelize, DataTypes);
-db.UserNotification = require('./userNotifications')(sequelize, DataTypes);
+db.Role = require('./Role')(sequelize, DataTypes);
+db.User = require('./User')(sequelize, DataTypes);
+db.Parent = require('./Parent')(sequelize, DataTypes);
+db.Driver = require('./Driver')(sequelize, DataTypes);
+db.Student = require('./Student')(sequelize, DataTypes);
+db.Bus = require('./Bus')(sequelize, DataTypes);
+db.Route = require('./Route')(sequelize, DataTypes);
+db.Stop = require('./Stop')(sequelize, DataTypes);
+db.Trip = require('./Trip')(sequelize, DataTypes);
+db.TripStop = require('./TripStop')(sequelize, DataTypes);
+db.TripPassenger = require('./TripPassenger')(sequelize, DataTypes);
+db.PickupRecord = require('./PickupRecord')(sequelize, DataTypes);
+db.NavigationLog = require('./NavigationLog')(sequelize, DataTypes);
+db.Message = require('./Message')(sequelize, DataTypes);
+db.Notification = require('./Notification')(sequelize, DataTypes);
+db.UserNotification = require('./UserNotification')(sequelize, DataTypes);
 
 // Associations
 // Role -> User
@@ -75,9 +75,17 @@ db.PickupRecord.belongsTo(db.Stop, { foreignKey: 'stop_id', targetKey: 'stop_id'
 db.Bus.hasMany(db.NavigationLog, { foreignKey: 'bus_id', sourceKey: 'bus_id' });
 db.NavigationLog.belongsTo(db.Bus, { foreignKey: 'bus_id', targetKey: 'bus_id' });
 
+// Trip -> NavigationLog (FK: navigation_logs.trip_id, ON DELETE CASCADE)
+db.Trip.hasMany(db.NavigationLog, { foreignKey: 'trip_id', sourceKey: 'trip_id', onDelete: 'CASCADE' });
+db.NavigationLog.belongsTo(db.Trip, { foreignKey: 'trip_id', targetKey: 'trip_id', onDelete: 'CASCADE' });
+
 // Message -> Notification
 db.Message.hasMany(db.Notification, { foreignKey: 'message_id', sourceKey: 'message_id' });
 db.Notification.belongsTo(db.Message, { foreignKey: 'message_id', targetKey: 'message_id' });
+
+// Message -> User (sender) (FK: messages.sender_id, ON DELETE SET NULL)
+db.User.hasMany(db.Message, { foreignKey: { name: 'sender_id', allowNull: true }, sourceKey: 'user_id', onDelete: 'SET NULL' });
+db.Message.belongsTo(db.User, { foreignKey: { name: 'sender_id', allowNull: true }, targetKey: 'user_id', onDelete: 'SET NULL' });
 
 // Notification -> UserNotification -> User
 db.Notification.hasMany(db.UserNotification, { foreignKey: 'notification_id', sourceKey: 'notification_id' });

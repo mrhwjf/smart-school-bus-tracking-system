@@ -15,10 +15,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Mount routes
-const studentsRouter = require('./routes/students');
-app.use('/api/students', studentsRouter);
-
 // Simple health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

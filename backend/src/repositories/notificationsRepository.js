@@ -2,17 +2,17 @@ const BaseRepository = require('./baseRepository');
 const db = require('../models');
 const { Op } = require('sequelize');
 
-class MessagesRepository extends BaseRepository {
+class NotificationsRepository extends BaseRepository {
 	constructor() {
-		super(db.Message, { sortableFields: ['sent_at', 'message_id'] });
+		super(db.Notification, { sortableFields: ['sent_at', 'notification_id', 'type'] });
 	}
 
 	buildWhere(filter = {}) {
 		const where = {};
-		const { message_id, sender_id, q, from, to } = filter;
+		const { notification_id, message_id, type, from, to } = filter;
+		if (notification_id) where.notification_id = notification_id;
 		if (message_id) where.message_id = message_id;
-		if (sender_id) where.sender_id = sender_id;
-		if (q) where.message_text = { [Op.like]: `%${q}%` };
+		if (type) where.type = type;
 		if (from || to) {
 			where.sent_at = {};
 			if (from) where.sent_at[Op.gte] = new Date(from);
@@ -22,4 +22,4 @@ class MessagesRepository extends BaseRepository {
 	}
 }
 
-module.exports = new MessagesRepository();
+module.exports = new NotificationsRepository();

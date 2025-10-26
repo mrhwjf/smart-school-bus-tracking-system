@@ -1,25 +1,21 @@
+const BaseRepository = require('./baseRepository');
 const db = require('../models');
 
-module.exports = {
-	async findAll(options = {}) {
-		return db.Bus.findAll({ order: [['bus_id', 'ASC']], ...options });
-	},
-
-	async findById(bus_id, options = {}) {
-		return db.Bus.findByPk(bus_id, options);
-	},
-
-	async create(data) {
-		return db.Bus.create(data);
-	},
-
-	async update(bus_id, data) {
-		const [count] = await db.Bus.update(data, { where: { bus_id } });
-		if (count === 0) return null;
-		return this.findById(bus_id);
-	},
-
-	async remove(bus_id) {
-		return db.Bus.destroy({ where: { bus_id } });
+class BusesRepository extends BaseRepository {
+	constructor() {
+		super(db.Bus, { sortableFields: ['created_at', 'updated_at', 'bus_id', 'plate_number', 'status', 'capacity'] });
 	}
-};
+
+	buildWhere(filter = {}) {
+		const where = {};
+		const { bus_id, driver_id, plate_number, status, capacity } = filter;
+		if (bus_id) where.bus_id = bus_id;
+		if (driver_id) where.driver_id = driver_id;
+		if (plate_number) where.plate_number = plate_number;
+		if (status) where.status = status;
+		if (capacity != null) where.capacity = capacity;
+		return where;
+	}
+}
+
+module.exports = new BusesRepository();
