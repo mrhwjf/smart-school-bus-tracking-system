@@ -59,7 +59,7 @@ export default function RouteHistory() {
           <IconButton
             edge="start"
             color="inherit"
-            onClick={() => navigate("/")}>
+            onClick={() => navigate("/GDChinh")}>
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" sx={{ ml: 1 }}>

@@ -21,9 +21,12 @@ import {
   Divider,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import ErrorIcon from "@mui/icons-material/Error";
 import screenshot from "./namaste-dog-smiling.png"; // chỉnh path nếu cần
 import { useNavigate } from "react-router-dom";
+import MapIcon from "@mui/icons-material/Map";
+import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
 export default function GDChinh() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const theme = useTheme();
@@ -206,25 +209,38 @@ export default function GDChinh() {
             <Divider sx={{ mb: 0 }} />
             <List>
               <ListItemButton
+                sx={{}}
+                onClick={() => {
+                  navigate("/");
+                  setSidebarOpen(false);
+                }}>
+                <PeopleAltIcon />
+                <ListItemText primary="Học sinh của tôi" sx={{ ml: 1 }} />
+              </ListItemButton>
+              <ListItemButton
+                sx={{}}
                 onClick={() => {
                   navigate("/map");
                   setSidebarOpen(false);
                 }}>
-                <ListItemText primary="Xem bản đồ" />
+                <MapIcon />
+                <ListItemText primary="Xem bản đồ" sx={{ ml: 1 }} />
               </ListItemButton>
               <ListItemButton
                 onClick={() => {
                   navigate("/history");
                   setSidebarOpen(false);
                 }}>
-                <ListItemText primary="Lịch sử tuyến đường" />
+                <DirectionsBusIcon />
+                <ListItemText primary="Lịch sử tuyến đường" sx={{ ml: 1 }} />
               </ListItemButton>
               <ListItemButton
                 onClick={() => {
                   console.log("Gọi khẩn cấp");
                   setSidebarOpen(false);
                 }}>
-                <ListItemText primary="Gọi khẩn cấp" />
+                <ErrorIcon />
+                <ListItemText primary="Gọi khẩn cấp" sx={{ ml: 1 }} />
               </ListItemButton>
             </List>
           </Box>

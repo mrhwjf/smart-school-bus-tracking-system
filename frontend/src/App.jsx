@@ -8,7 +8,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<GDChinh />} />
+        <Route path="/GDChinh" element={<GDChinh />} />
         <Route path="/history" element={<RouteHistory />} />
         <Route path="/map" element={<GD_Map />} />
       </Routes>
