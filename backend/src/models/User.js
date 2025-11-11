@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
 			validate: { isEmail: true }
 		},
 		password_hash: { type: DataTypes.STRING(255), allowNull: false },
-		locked: { type: DataTypes.BOOLEAN, defaultValue: true, allowNull: true }
+		locked: { type: DataTypes.BOOLEAN, allowNull: true }
 	}, {
 		tableName: 'users',
 		underscored: true,
@@ -35,10 +35,11 @@ module.exports = (sequelize, DataTypes) => {
 		scopes: {
 			byRoleId(roleId) { return { where: { role_id: roleId } }; },
 			byEmail(email) { return { where: { email } }; },
+			byPhoneNumber(phoneNumber) { return { where: { phone_number: phoneNumber } }; },
 			locked() { return { where: { locked: true } }; }
 		},
 		indexes: [
-			{ name: 'idx_role_id', fields: ['role_id'] }
+			{ name: 'idx_users_role_id', fields: ['role_id'] }
 		]
 	});
 

@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
 		freezeTableName: true,
 		timestamps: true,
 		createdAt: 'created_at',
-		updatedAt: false,
+		updatedAt: 'updated_at',
 		charset: 'utf8mb4'
 	});
 

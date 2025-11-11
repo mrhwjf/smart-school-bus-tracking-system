@@ -1,9 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
 	const Student = sequelize.define('Student', {
 		student_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-		parent_id: { type: DataTypes.INTEGER, allowNull: false },
+		parent_id: { type: DataTypes.INTEGER, allowNull: true },
+		class_id: { type: DataTypes.INTEGER, allowNull: true },
 		name: { type: DataTypes.STRING(255), allowNull: false, validate: { len: [1, 255] } },
-		class: { type: DataTypes.STRING(50), allowNull: true },
 		gender: { type: DataTypes.ENUM('MALE', 'FEMALE', 'OTHER'), allowNull: true },
 		date_of_birth: { type: DataTypes.DATEONLY, allowNull: true }
 	}, {
@@ -15,8 +15,16 @@ module.exports = (sequelize, DataTypes) => {
 		updatedAt: 'updated_at',
 		charset: 'utf8mb4',
 		indexes: [
-			{ name: 'idx_parent_id', fields: ['parent_id'] }
+			{ name: 'idx_students_parent_id', fields: ['parent_id'] },
+			{ name: 'idx_students_class_id', fields: ['class_id'] }
 		]
+	});
+
+	// Normalize and sanitize name
+	Student.addHook('beforeValidate', (student) => {
+		if (student && student.name) {
+			student.name = String(student.name).trim();
+		}
 	});
 
 	return Student;

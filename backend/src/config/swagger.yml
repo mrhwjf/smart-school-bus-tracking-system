@@ -1,0 +1,1147 @@
+openapi: 3.0.3
+info:
+  title: Smart School Bus Tracking System API
+  version: 1.0.0
+  description: |
+    REST API for managing a smart school bus tracking system.
+    Base path is `/api/v1`.
+servers:
+  - url: /api/v1
+    description: Default server (relative to host)
+
+tags:
+  - name: Students
+    description: Student management
+  - name: Routes
+    description: Route management
+  - name: Stops
+    description: Stop management
+  - name: Buses
+    description: Bus management
+  - name: Schedules
+    description: Schedule management
+
+paths:
+  /routes:
+    get:
+      summary: List routes
+      tags: [Routes]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - in: query
+          name: name
+          schema: { type: string }
+          description: Substring match on route name
+        - in: query
+          name: sortField
+          schema: { type: string, enum: [route_id, name, created_at] }
+        - in: query
+          name: sortDirection
+          schema: { type: string, enum: [ASC, DESC] }
+      responses:
+        '200':
+          description: Routes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePaginatedRoutes'
+    post:
+      summary: Create a route
+      tags: [Routes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRouteRequest'
+      responses:
+        '201':
+          description: Route created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRoute'
+
+  /routes/{routeId}:
+    get:
+      summary: Get route by id
+      tags: [Routes]
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Route retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRoute'
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update a route
+      tags: [Routes]
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRouteRequest'
+      responses:
+        '200':
+          description: Route updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRoute'
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete a route
+      tags: [Routes]
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Route deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /routes/{routeId}/stops:
+    get:
+      summary: Get ordered stops of a route
+      tags: [Routes]
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Route stops retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRouteStops'
+    put:
+      summary: Replace ordered stops for a route
+      description: Replaces the entire stop sequence for the route.
+      tags: [Routes]
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceRouteStopsRequest'
+      responses:
+        '200':
+          description: Route stops replaced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRouteStops'
+
+  /routes/{routeId}/passengers:
+    get:
+      summary: Get passengers (students) assigned to a route
+      tags: [Routes]
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Route passengers retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRoutePassengers'
+    put:
+      summary: Replace passengers (students) for a route
+      description: Replaces all students assigned to the route.
+      tags: [Routes]
+      parameters:
+        - in: path
+          name: routeId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceRoutePassengersRequest'
+      responses:
+        '200':
+          description: Route passengers replaced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseRoutePassengers'
+  /stops:
+    get:
+      summary: List stops
+      tags: [Stops]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - in: query
+          name: name
+          schema: { type: string }
+          description: Substring match on stop name
+        - in: query
+          name: address
+          schema: { type: string }
+          description: Substring match on address
+        - in: query
+          name: active
+          schema: { type: boolean }
+        - in: query
+          name: sortField
+          schema: { type: string, enum: [stop_id, name, created_at] }
+        - in: query
+          name: sortDirection
+          schema: { type: string, enum: [ASC, DESC] }
+      responses:
+        '200':
+          description: Stops retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePaginatedStops'
+    post:
+      summary: Create a stop
+      tags: [Stops]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStopRequest'
+      responses:
+        '201':
+          description: Stop created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseStop'
+
+  /stops/{stopId}:
+    get:
+      summary: Get stop by id
+      tags: [Stops]
+      parameters:
+        - in: path
+          name: stopId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Stop retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseStop'
+        '404':
+          description: Stop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update a stop
+      tags: [Stops]
+      parameters:
+        - in: path
+          name: stopId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStopRequest'
+      responses:
+        '200':
+          description: Stop updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseStop'
+        '404':
+          description: Stop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete a stop
+      tags: [Stops]
+      parameters:
+        - in: path
+          name: stopId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Stop deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /buses:
+    get:
+      summary: List buses
+      tags: [Buses]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - in: query
+          name: status
+          schema: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE, OUT_OF_SERVICE] }
+        - in: query
+          name: plateNumber
+          schema: { type: string }
+        - in: query
+          name: model
+          schema: { type: string }
+        - in: query
+          name: sortField
+          schema: { type: string, enum: [bus_id, plate_number, created_at] }
+        - in: query
+          name: sortDirection
+          schema: { type: string, enum: [ASC, DESC] }
+      responses:
+        '200':
+          description: Buses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePaginatedBuses'
+    post:
+      summary: Create a bus
+      tags: [Buses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBusRequest'
+      responses:
+        '201':
+          description: Bus created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseBus'
+
+  /buses/{busId}:
+    get:
+      summary: Get bus by id
+      tags: [Buses]
+      parameters:
+        - in: path
+          name: busId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Bus retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseBus'
+        '404':
+          description: Bus not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update a bus
+      tags: [Buses]
+      parameters:
+        - in: path
+          name: busId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBusRequest'
+      responses:
+        '200':
+          description: Bus updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseBus'
+        '404':
+          description: Bus not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete a bus
+      tags: [Buses]
+      parameters:
+        - in: path
+          name: busId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Bus deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /schedules:
+    get:
+      summary: List schedules
+      tags: [Schedules]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - in: query
+          name: routeId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: busId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: driverId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: shift
+          schema: { type: string, enum: [MORNING, AFTERNOON] }
+        - in: query
+          name: active
+          schema: { type: boolean }
+        - in: query
+          name: sortField
+          schema: { type: string, enum: [schedule_id, start_time, created_at] }
+        - in: query
+          name: sortDirection
+          schema: { type: string, enum: [ASC, DESC] }
+      responses:
+        '200':
+          description: Schedules retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePaginatedSchedules'
+    post:
+      summary: Create a schedule
+      tags: [Schedules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduleRequest'
+      responses:
+        '201':
+          description: Schedule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSchedule'
+
+  /schedules/{scheduleId}:
+    get:
+      summary: Get schedule by id
+      tags: [Schedules]
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Schedule retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSchedule'
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update a schedule
+      tags: [Schedules]
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateScheduleRequest'
+      responses:
+        '200':
+          description: Schedule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSchedule'
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete a schedule
+      tags: [Schedules]
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Schedule deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /schedules/{scheduleId}/days:
+    get:
+      summary: Get schedule days
+      tags: [Schedules]
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Schedule days retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseScheduleDays'
+    put:
+      summary: Replace schedule days
+      description: Replaces the set of weekdays for a schedule.
+      tags: [Schedules]
+      parameters:
+        - in: path
+          name: scheduleId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceScheduleDaysRequest'
+      responses:
+        '200':
+          description: Schedule days replaced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseScheduleDays'
+
+  /students:
+    get:
+      summary: List students
+      description: |
+        Returns a paginated list of students. Supports flexible filtering by name (substring), parentId and classId, and optional sorting.
+      tags: [Students]
+      operationId: listStudents
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+          description: Zero-based page index
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+          description: Page size
+        - in: query
+          name: name
+          schema: { type: string }
+          description: Substring filter on student name
+        - in: query
+          name: parentId
+          schema: { type: integer, minimum: 1 }
+          description: Filter by parent id
+        - in: query
+          name: classId
+          schema: { type: integer, minimum: 1 }
+          description: Filter by class id
+        - in: query
+          name: sortField
+          schema: { type: string, enum: [student_id, name, created_at] }
+          description: Field to sort by
+        - in: query
+          name: sortDirection
+          schema: { type: string, enum: [ASC, DESC] }
+          description: Sort direction
+      responses:
+        '200':
+          description: Students retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePaginatedStudents'
+    post:
+      summary: Create a student
+      tags: [Students]
+      operationId: createStudent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStudentRequest'
+            examples:
+              sample:
+                summary: Minimal valid payload
+                value:
+                  parentId: 1
+                  name: "Alice Johnson"
+                  classId: 2
+      responses:
+        '201':
+          description: Student created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseStudent'
+
+  /students/{studentId}:
+    get:
+      summary: Get student by id
+      tags: [Students]
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Student retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseStudent'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: Update a student
+      tags: [Students]
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStudentRequest'
+      responses:
+        '200':
+          description: Student updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseStudent'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    delete:
+      summary: Delete a student
+      tags: [Students]
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Student deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+components:
+  schemas:
+    ApiResponseSchedule:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Schedule'
+
+    ApiResponsePaginatedSchedules:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaginatedSchedules'
+
+    PaginatedSchedules:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        hasNext: { type: boolean }
+        hasPrevious: { type: boolean }
+
+    Schedule:
+      type: object
+      properties:
+        scheduleId: { type: integer }
+        routeId: { type: integer }
+        busId: { type: integer }
+        driverId: { type: integer }
+        shift: { type: string, enum: [MORNING, AFTERNOON] }
+        startTime: { type: string, pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$' }
+        endTime: { type: string, pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$' }
+        active: { type: boolean }
+        days:
+          type: array
+          items: { type: string, enum: [MON, TUE, WED, THU, FRI, SAT, SUN] }
+        route:
+          $ref: '#/components/schemas/Route'
+        bus:
+          $ref: '#/components/schemas/Bus'
+        driver:
+          $ref: '#/components/schemas/Driver'
+
+    CreateScheduleRequest:
+      type: object
+      required: [routeId, busId, driverId, startTime, endTime]
+      properties:
+        routeId: { type: integer }
+        busId: { type: integer }
+        driverId: { type: integer }
+        shift: { type: string, enum: [MORNING, AFTERNOON] }
+        startTime: { type: string, pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$' }
+        endTime: { type: string, pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$' }
+        active: { type: boolean }
+        days:
+          type: array
+          items: { type: string, enum: [MON, TUE, WED, THU, FRI, SAT, SUN] }
+
+    UpdateScheduleRequest:
+      type: object
+      properties:
+        routeId: { type: integer }
+        busId: { type: integer }
+        driverId: { type: integer }
+        shift: { type: string, enum: [MORNING, AFTERNOON] }
+        startTime: { type: string, pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$' }
+        endTime: { type: string, pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$' }
+        active: { type: boolean }
+        days:
+          type: array
+          items: { type: string, enum: [MON, TUE, WED, THU, FRI, SAT, SUN] }
+
+    ApiResponseScheduleDays:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { type: string, enum: [MON, TUE, WED, THU, FRI, SAT, SUN] }
+
+    ReplaceScheduleDaysRequest:
+      type: object
+      required: [days]
+      properties:
+        days:
+          type: array
+          items: { type: string, enum: [MON, TUE, WED, THU, FRI, SAT, SUN] }
+    ApiResponseRoute:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Route'
+
+    ApiResponsePaginatedRoutes:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaginatedRoutes'
+
+    PaginatedRoutes:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route'
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        hasNext: { type: boolean }
+        hasPrevious: { type: boolean }
+
+    Route:
+      type: object
+      properties:
+        routeId: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteStop'
+
+    CreateRouteRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 255 }
+        description: { type: string, nullable: true }
+
+    UpdateRouteRequest:
+      type: object
+      properties:
+        name: { type: string, maxLength: 255 }
+        description: { type: string, nullable: true }
+
+    RouteStop:
+      type: object
+      properties:
+        routeId: { type: integer }
+        stopId: { type: integer }
+        stopOrder: { type: integer }
+        stop:
+          $ref: '#/components/schemas/Stop'
+
+    ApiResponseRouteStops:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/RouteStop'
+
+    ReplaceRouteStopsRequest:
+      type: object
+      required: [stops]
+      properties:
+        stops:
+          type: array
+          items:
+            type: object
+            required: [stopId]
+            properties:
+              stopId: { type: integer }
+              stopOrder: { type: integer }
+
+    RoutePassenger:
+      type: object
+      properties:
+        routeId: { type: integer }
+        studentId: { type: integer }
+        student:
+          $ref: '#/components/schemas/Student'
+
+    ApiResponseRoutePassengers:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/RoutePassenger'
+
+    ReplaceRoutePassengersRequest:
+      type: object
+      required: [studentIds]
+      properties:
+        studentIds:
+          type: array
+          items: { type: integer }
+    ApiResponseStop:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Stop'
+
+    ApiResponsePaginatedStops:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaginatedStops'
+
+    PaginatedStops:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stop'
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        hasNext: { type: boolean }
+        hasPrevious: { type: boolean }
+
+    Stop:
+      type: object
+      properties:
+        stopId: { type: integer }
+        name: { type: string }
+        latitude: { type: number, format: float }
+        longitude: { type: number, format: float }
+        address: { type: string, nullable: true }
+        active: { type: boolean }
+
+    CreateStopRequest:
+      type: object
+      required: [name, latitude, longitude]
+      properties:
+        name: { type: string, maxLength: 255 }
+        latitude: { type: number, format: float, minimum: -90, maximum: 90 }
+        longitude: { type: number, format: float, minimum: -180, maximum: 180 }
+        address: { type: string, nullable: true, maxLength: 255 }
+        active: { type: boolean }
+
+    UpdateStopRequest:
+      type: object
+      properties:
+        name: { type: string, maxLength: 255 }
+        latitude: { type: number, format: float, minimum: -90, maximum: 90 }
+        longitude: { type: number, format: float, minimum: -180, maximum: 180 }
+        address: { type: string, nullable: true, maxLength: 255 }
+        active: { type: boolean }
+    ApiResponseBus:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Bus'
+
+    ApiResponsePaginatedBuses:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaginatedBuses'
+
+    PaginatedBuses:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bus'
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        hasNext: { type: boolean }
+        hasPrevious: { type: boolean }
+
+    Bus:
+      type: object
+      properties:
+        busId: { type: integer }
+        plateNumber: { type: string }
+        model: { type: string, nullable: true }
+        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE, OUT_OF_SERVICE] }
+        capacity: { type: integer }
+
+    CreateBusRequest:
+      type: object
+      required: [plateNumber]
+      properties:
+        plateNumber: { type: string, maxLength: 20 }
+        model: { type: string, nullable: true, maxLength: 100 }
+        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE, OUT_OF_SERVICE] }
+        capacity: { type: integer, minimum: 0 }
+
+    UpdateBusRequest:
+      type: object
+      properties:
+        plateNumber: { type: string, maxLength: 20 }
+        model: { type: string, nullable: true, maxLength: 100 }
+        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE, OUT_OF_SERVICE] }
+        capacity: { type: integer, minimum: 0 }
+    ApiResponse:
+      type: object
+      properties:
+        message: { type: string }
+        success: { type: boolean }
+        data: {}
+        timestamp: { type: string, format: date-time }
+
+    ApiResponseStudent:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Student'
+
+    ApiResponsePaginatedStudents:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaginatedStudents'
+
+    PaginatedStudents:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        hasNext: { type: boolean }
+        hasPrevious: { type: boolean }
+
+    Student:
+      type: object
+      properties:
+        studentId: { type: integer }
+        parentId: { type: integer, nullable: true }
+        classId: { type: integer, nullable: true }
+        name: { type: string }
+        gender: { type: string, enum: [MALE, FEMALE, OTHER], nullable: true }
+        dateOfBirth: { type: string, format: date, nullable: true }
+        age: { type: integer, nullable: true }
+        class:
+          $ref: '#/components/schemas/ClassRef'
+
+    ClassRef:
+      type: object
+      properties:
+        classId: { type: integer }
+        name: { type: string }
+
+    CreateStudentRequest:
+      type: object
+      required: [parentId, name, classId]
+      properties:
+        parentId:
+          type: integer
+          description: Must reference an existing parent (users.user_id with a related parents record)
+        name:
+          type: string
+        classId:
+          type: integer
+          description: Must reference an existing class
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        dateOfBirth:
+          type: string
+          format: date
+
+    UpdateStudentRequest:
+      type: object
+      properties:
+        parentId:
+          type: integer
+        name:
+          type: string
+        classId:
+          type: integer
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        dateOfBirth:
+          type: string
+          format: date

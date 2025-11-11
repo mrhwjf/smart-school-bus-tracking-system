@@ -13,5 +13,11 @@ module.exports = (sequelize, DataTypes) => {
 		charset: 'utf8mb4'
 	});
 
+	// Normalize inputs
+	Route.addHook('beforeValidate', (route) => {
+		if (route && route.name) route.name = String(route.name).trim();
+		if (route && route.description) route.description = String(route.description).trim();
+	});
+
 	return Route;
 };

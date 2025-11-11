@@ -1,12 +1,12 @@
 module.exports = (sequelize, DataTypes) => {
 	const Trip = sequelize.define('Trip', {
 		trip_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-		route_id: { type: DataTypes.INTEGER, allowNull: false },
-		bus_id: { type: DataTypes.INTEGER, allowNull: false },
-		start_time: { type: DataTypes.DATE, allowNull: true },
-		end_time: { type: DataTypes.DATE, allowNull: true },
+		schedule_id: { type: DataTypes.INTEGER, allowNull: false },
+		trip_date: { type: DataTypes.DATEONLY, allowNull: false },
+		driver_id: { type: DataTypes.INTEGER, allowNull: true }, // optional override
 		status: { type: DataTypes.ENUM('SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'), defaultValue: 'SCHEDULED' },
-		shift: { type: DataTypes.ENUM('MORNING', 'AFTERNOON'), defaultValue: 'MORNING' }
+		actual_start_time: { type: DataTypes.DATE, allowNull: true },
+		actual_end_time: { type: DataTypes.DATE, allowNull: true }
 	}, {
 		tableName: 'trips',
 		underscored: true,
@@ -17,23 +17,20 @@ module.exports = (sequelize, DataTypes) => {
 		charset: 'utf8mb4',
 		validate: {
 			endAfterStart() {
-				if (this.end_time && this.start_time && !(this.end_time > this.start_time)) {
-					throw new Error('end_time must be greater than start_time');
+				if (this.actual_end_time && this.actual_start_time && !(this.actual_end_time > this.actual_start_time)) {
+					throw new Error('actual_end_time must be greater than actual_start_time');
 				}
 			}
 		},
 		scopes: {
-			byRoute(routeId) { return { where: { route_id: routeId } }; },
-			byBus(busId) { return { where: { bus_id: busId } }; },
+			bySchedule(scheduleId) { return { where: { schedule_id: scheduleId } }; },
+			onDate(date) { return { where: { trip_date: date } }; },
 			withStatus(status) { return { where: { status } }; },
 			current() { return { where: { status: ['SCHEDULED', 'IN_PROGRESS'] } }; }
 		},
 		indexes: [
-			{ name: 'idx_trip_route', fields: ['route_id'] },
-			{ name: 'idx_trip_bus', fields: ['bus_id'] },
-			{ name: 'idx_trips_status_start', fields: ['status', 'start_time'] },
-			{ name: 'idx_trips_route_start', fields: ['route_id', 'start_time'] },
-			{ name: 'idx_trips_bus_start', fields: ['bus_id', 'start_time'] }
+			{ name: 'idx_trips_status_date', fields: ['status', 'trip_date'] },
+			{ name: 'idx_trips_schedule_date', fields: ['schedule_id', 'trip_date'] }
 		]
 	});
 

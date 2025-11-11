@@ -42,13 +42,13 @@ This project aims to digitize the bus management process and ensure better commu
 * Monitor live bus locations.
 * Send messages to drivers or parents.
 
-### 🚍 Driver Portal (Mobile View)
+### 🚍 Driver Portal (Mobile View on Web)
 
 * View daily route and student list.
 * Mark students as picked up/dropped off.
 * Report delays or issues.
 
-### 👨‍👩‍👧 Parent Portal (Mobile View)
+### 👨‍👩‍👧 Parent Portal (Mobile View on Web)
 
 * Track the child’s bus in real time.
 * Receive alerts when the bus approaches.
