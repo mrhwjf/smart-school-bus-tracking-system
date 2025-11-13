@@ -19,6 +19,7 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
+import CallIcon from "@mui/icons-material/Call";
 import MenuIcon from "@mui/icons-material/Menu";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import MapIcon from "@mui/icons-material/Map";
@@ -28,14 +29,10 @@ import ClassIcon from "@mui/icons-material/Class";
 import WcIcon from "@mui/icons-material/Wc";
 import CakeIcon from "@mui/icons-material/Cake";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import EmailIcon from "@mui/icons-material/Email";
 import { useNavigate } from "react-router-dom";
 import { blue } from "@mui/material/colors";
-
-/**
- * GDChinh with dropdown selector for multiple students.
- * - Dropdown arrow is top-left (inside AppBar).
- * - Selecting a student updates the displayed card.
- */
+import Diversity1Icon from "@mui/icons-material/Diversity1";
 
 export default function GDChinh() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -48,26 +45,13 @@ export default function GDChinh() {
   const handleLogout = () => console.log("Đăng xuất");
 
   // Demo: danh sách 2 học sinh
-  const students = [
-    {
-      id: "3123410268",
-      name: "Đỗ Thiên Phú",
-      class: "DCT1236",
-      gender: "Gay",
-      dob: "2005-10-21",
-    },
-    {
-      id: "3123410288",
-      name: "Nguyễn Grass",
-      class: "DCT1236",
-      gender: "Đàn ông",
-      dob: "2005-07-04",
-    },
-  ];
-
-  // state: current selected student
-  const [currentId, setCurrentId] = React.useState(students[0].id);
-  const student = students.find((s) => s.id === currentId) || students[0];
+  const user = {
+    id: "3123410268",
+    name: "Đỗ Thiên Phú",
+    phone: "0896027930",
+    email: "youremail@sucksyourass.com",
+    relationship: "Dượng",
+  };
 
   // dropdown handlers
   const handleOpenDropdown = (e) => setAnchorEl(e.currentTarget);
@@ -79,8 +63,8 @@ export default function GDChinh() {
 
   // safe initials for avatar
   const initials =
-    student && student.name
-      ? student.name
+    user && user.name
+      ? user.name
           .split(" ")
           .map((n) => (n ? n[0] : ""))
           .filter(Boolean)
@@ -102,7 +86,8 @@ export default function GDChinh() {
           sx={{
             mt: 1.5,
             height: "100%",
-            maxWidth: 400,
+            width: "92.5%",
+            maxWidth: 500,
             borderRadius: 2,
             bgcolor: "background.paper",
             overflow: "visible",
@@ -116,70 +101,22 @@ export default function GDChinh() {
                 py: 1,
                 bgcolor: "#1976d2",
               }}>
-              {/* --- Dropdown arrow ở góc trái --- */}
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <IconButton
-                  aria-controls={open ? "student-menu" : undefined}
-                  aria-haspopup="true"
-                  aria-expanded={open ? "true" : undefined}
-                  onClick={handleOpenDropdown}
-                  size="small"
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    color: "#FFFFFF",
-                    bgcolor: "transparent",
-                    "&:hover": { bgcolor: "transparent" },
-                  }}>
-                  <ArrowDropDownIcon />
-                </IconButton>
-
-                {/* Dropdown menu listing students */}
-                <Menu
-                  id="student-menu"
-                  anchorEl={anchorEl}
-                  open={open}
-                  onClose={handleCloseDropdown}
-                  MenuListProps={{ "aria-labelledby": "student-selector" }}>
-                  {students.map((s) => (
-                    <MenuItem
-                      key={s.id}
-                      selected={s.id === currentId}
-                      onClick={() => handleSelectStudent(s.id)}>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Avatar sx={{ width: 30, height: 30, fontSize: 12 }}>
-                          {s.name
-                            .split(" ")
-                            .map((n) => (n ? n[0] : ""))
-                            .slice(0, 2)
-                            .join("")}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {s.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {s.class} • {s.id}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Menu>
-              </Box>
-
               <Typography
                 variant="h5"
                 fontWeight={600}
-                sx={{ p: 2, color: "#FFFFFF" }}>
-                Thông tin học sinh
+                sx={{
+                  p: 2,
+                  color: "#FFFFFF",
+                  width: "100%",
+                  textAlign: "center",
+                }}>
+                Hồ sơ của tôi
               </Typography>
 
               {/* menu icon ở phải */}
               <IconButton
                 onClick={handleMenuItemClick}
-                edge="end"
+                edge="start"
                 aria-label="menu"
                 sx={{
                   width: 40,
@@ -224,10 +161,10 @@ export default function GDChinh() {
                 {initials}
               </Avatar>
               <Typography variant="subtitle1" fontWeight={600}>
-                {student.name}
+                {user.name}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Student ID: {student.id}
+                User ID: {user.id}
               </Typography>
             </Box>
 
@@ -240,7 +177,7 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Tên"
-                    secondary={student.name}
+                    secondary={user.name}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -250,11 +187,11 @@ export default function GDChinh() {
 
                 <ListItem sx={{ py: 2, px: 0 }}>
                   <ListItemIcon sx={{ minWidth: 60 }}>
-                    <ClassIcon sx={{ fontSize: 40 }} />
+                    <CallIcon sx={{ fontSize: 40 }} />
                   </ListItemIcon>
                   <ListItemText
-                    primary="Lớp"
-                    secondary={student.class}
+                    primary="Số điện thoại"
+                    secondary={user.phone}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -264,11 +201,11 @@ export default function GDChinh() {
 
                 <ListItem sx={{ py: 2, px: 0 }}>
                   <ListItemIcon sx={{ minWidth: 60 }}>
-                    <WcIcon sx={{ fontSize: 40 }} />
+                    <EmailIcon sx={{ fontSize: 40 }} />
                   </ListItemIcon>
                   <ListItemText
-                    primary="Giới tính"
-                    secondary={student.gender}
+                    primary="Email"
+                    secondary={user.email}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -278,11 +215,11 @@ export default function GDChinh() {
 
                 <ListItem sx={{ py: 2, px: 0 }}>
                   <ListItemIcon sx={{ minWidth: 60 }}>
-                    <CakeIcon sx={{ fontSize: 40 }} />
+                    <Diversity1Icon sx={{ fontSize: 40 }} />
                   </ListItemIcon>
                   <ListItemText
-                    primary="Ngày Sinh"
-                    secondary={student.dob}
+                    primary="Mối Quan hệ"
+                    secondary={user.relationship}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -319,16 +256,16 @@ export default function GDChinh() {
             <Divider sx={{ mb: 0 }} />
             <List>
               <ListItemButton
-                sx={{}}
+                sx={{ bgcolor: "#1976d2", color: "#fff" }}
                 onClick={() => {
-                  navigate("/HoSoCuaToi");
+                  navigate("/GDChinh");
                   setSidebarOpen(false);
                 }}>
                 <PersonIcon />
                 <ListItemText primary="Hồ sơ của tôi" sx={{ ml: 1 }} />
               </ListItemButton>
               <ListItemButton
-                sx={{ bgcolor: "#1976d2", color: "#fff" }}
+                sx={{}}
                 onClick={() => {
                   navigate("/GDChinh");
                   setSidebarOpen(false);

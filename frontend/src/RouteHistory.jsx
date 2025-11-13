@@ -1,5 +1,4 @@
-// RouteHistory.jsx
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   AppBar,
@@ -10,10 +9,13 @@ import {
   Card,
   CardContent,
   Chip,
+  InputBase,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
 
+// sample data now includes a proper ISO date field (yyyy-mm-dd) so the <input type="date"> works
 const sampleTrips = [
   {
     id: 1,
@@ -22,6 +24,7 @@ const sampleTrips = [
     to: "Đại học Sài Gòn",
     time: "7:00 - 8:30",
     status: "Complete",
+    date: "2025-10-21",
   },
   {
     id: 2,
@@ -30,6 +33,7 @@ const sampleTrips = [
     to: "Museum",
     time: "15:00 - 16:30",
     status: "Complete",
+    date: "2025-09-27",
   },
   {
     id: 3,
@@ -37,7 +41,8 @@ const sampleTrips = [
     from: "My house",
     to: "School but different branch",
     time: "15:00 - 16:30",
-    status: "Progressing",
+    status: "Canceled",
+    date: "2025-09-27",
   },
   {
     id: 4,
@@ -46,11 +51,19 @@ const sampleTrips = [
     to: "School",
     time: "15:00 - 16:30",
     status: "Canceled",
+    date: "2025-09-27",
   },
 ];
 
 export default function RouteHistory() {
   const navigate = useNavigate();
+  const [filterDate, setFilterDate] = useState("");
+
+  // derived filtered list
+  const filteredTrips = useMemo(() => {
+    if (!filterDate) return sampleTrips;
+    return sampleTrips.filter((t) => t.date === filterDate);
+  }, [filterDate]);
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
@@ -59,7 +72,8 @@ export default function RouteHistory() {
           <IconButton
             edge="start"
             color="inherit"
-            onClick={() => navigate("/GDChinh")}>
+            onClick={() => navigate("/GDChinh")}
+            aria-label="back">
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" sx={{ ml: 1 }}>
@@ -69,11 +83,45 @@ export default function RouteHistory() {
       </AppBar>
 
       <Container maxWidth="sm" sx={{ py: 2 }}>
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          Past Trips ({sampleTrips.length})
-        </Typography>
+        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              Past Trips ({filteredTrips.length})
+            </Typography>
+            {filterDate && (
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Showing trips on {new Date(filterDate).toLocaleDateString()}
+              </Typography>
+            )}
+          </Box>
 
-        {sampleTrips.map((trip) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}>
+            {/* controlled date input */}
+            <InputBase
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                px: 1,
+                py: 0.5,
+                cursor: "pointer",
+              }}
+              inputProps={{
+                "aria-label": "filter by date",
+              }}
+            />
+          </Box>
+        </Box>
+
+        {filteredTrips.map((trip) => (
           <Card
             key={trip.id}
             sx={{
@@ -89,6 +137,8 @@ export default function RouteHistory() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "flex-start",
+                  gap: 4,
+                  fontSize: "1.2rem",
                 }}>
                 <Box>
                   <Typography sx={{ fontWeight: 700 }}>{trip.title}</Typography>
@@ -102,20 +152,23 @@ export default function RouteHistory() {
                   </Typography>
                 </Box>
 
-                <Chip
-                  label={trip.status}
-                  color={
-                    trip.status === "Complete"
-                      ? "success"
-                      : trip.status === "Progressing"
-                      ? "info"
-                      : "error"
-                  }
-                />
+                {trip.status === "Complete" ? (
+                  <Chip label={trip.status} color="success" />
+                ) : trip.status === "Canceled" ? (
+                  <Chip label={trip.status} color="error" />
+                ) : null}
               </Box>
             </CardContent>
           </Card>
         ))}
+
+        {filteredTrips.length === 0 && (
+          <Typography
+            variant="body2"
+            sx={{ textAlign: "center", mt: 4, color: "text.secondary" }}>
+            No trips found for the selected date.
+          </Typography>
+        )}
       </Container>
     </Box>
   );
