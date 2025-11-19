@@ -10,4 +10,9 @@ export default defineConfig({
       },
     }),
   ],
+  // Cho phép truy cập từ thiết bị khác trong cùng mạng LAN
+  server: {
+    host: true, // lắng nghe trên 0.0.0.0 thay vì chỉ localhost
+    port: 5173, // giữ nguyên port mặc định của Vite
+  },
 })
