@@ -1,12 +1,15 @@
-const express = require('express');
-const ctrl = require('../controllers/busesController');
+const { Router } = require('express');
+const router = Router();
+const { handleValidation } = require('../middlewares/handleValidation');
 
-const router = express.Router();
+const { busController } = require('../controllers');
+const { createBusRequest, updateBusRequest, listBusesQuery } = require('../middlewares/validation');
 
-router.get('/', ctrl.list);       // GET /api/v1/buses
-router.get('/:id', ctrl.get);     // GET /api/v1/buses/:id
-router.post('/', ctrl.create);    // POST /api/v1/buses
-router.put('/:id', ctrl.update);  // PUT /api/v1/buses/:id
-router.delete('/:id', ctrl.remove); // DELETE /api/v1/buses/:id
+
+router.get('/buses', listBusesQuery, handleValidation, busController.listBuses);
+router.get('/buses/:busId', busController.getBus);
+router.post('/buses', createBusRequest, handleValidation, busController.createBus);
+router.put('/buses/:busId', updateBusRequest, handleValidation, busController.updateBus);
+router.delete('/buses/:busId', busController.deleteBus);
 
 module.exports = router;

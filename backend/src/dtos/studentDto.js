@@ -1,12 +1,20 @@
-// Minimal student DTO description (used for documentation / future validation)
-// Fields: parent_id (int), name (string), class (string), gender (MALE|FEMALE|OTHER), date_of_birth (YYYY-MM-DD)
-module.exports = {
-  required: ['parent_id', 'name'],
-  properties: {
-    parent_id: 'number',
-    name: 'string',
-    class: 'string',
-    gender: ['MALE', 'FEMALE', 'OTHER'],
-    date_of_birth: 'string'
-  }
-};
+const { toClassDto } = require('./classDto');
+const { toUserDto } = require('./userDto');
+const { calculateAge } = require('../utils/helpers');
+
+function toStudentDto(student) {
+	if (!student) return null;
+	return {
+		studentId: student.student_id,
+		parentId: student.parent_id,
+		classId: student.class_id,
+		name: student.name,
+		class: student.Class ? toClassDto(student.Class) : undefined,
+		gender: student.gender || null,
+		dateOfBirth: student.date_of_birth || null,
+		age: calculateAge(student.date_of_birth),
+		parent: student.Parent?.User ? toUserDto(student.Parent.User) : undefined
+	};
+}
+
+module.exports = { toStudentDto };

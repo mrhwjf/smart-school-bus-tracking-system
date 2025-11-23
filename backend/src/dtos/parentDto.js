@@ -1,8 +1,9 @@
-// Minimal parent DTO
-module.exports = {
-  required: [],
-  properties: {
-    parent_id: 'number',
-    relationship: ['PARENTS','GUARDIANS','RELATIVES']
-  }
-};
+function toParentDto(parent) {
+	if (!parent) return null;
+	return {
+		parentId: parent.parent_id,
+		relationship: parent.relationship || 'PARENT',
+	};
+}
+
+module.exports = { toParentDto };

@@ -1,11 +1,25 @@
-const express = require('express');
-const ctrl = require('../controllers/usersController');
-const router = express.Router();
+const { Router } = require('express');
+const router = Router();
+const { handleValidation } = require('../middlewares/handleValidation');
 
-router.get('/', ctrl.list);
-router.get('/:id', ctrl.get);
-router.post('/', ctrl.create);
-router.put('/:id', ctrl.update);
-router.delete('/:id', ctrl.remove);
+const { userController } = require('../controllers');
+const {
+	listUsersQuery, createUserRequest, updateUserRequest
+} = require('../middlewares/validation');
+
+
+// Roles
+router.get('/roles', userController.listRoles);
+router.get('/roles/:roleId', userController.getRole);
+router.post('/roles', userController.createRole);
+router.put('/roles/:roleId', userController.updateRole);
+router.delete('/roles/:roleId', userController.deleteRole);
+
+// Users
+router.get('/users', listUsersQuery, handleValidation, userController.listUsers);
+router.get('/users/:userId', userController.getUser);
+router.post('/users', createUserRequest, handleValidation, userController.createUser);
+router.put('/users/:userId', updateUserRequest, handleValidation, userController.updateUser);
+router.delete('/users/:userId', userController.deleteUser);
 
 module.exports = router;
