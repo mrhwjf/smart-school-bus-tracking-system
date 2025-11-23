@@ -11,9 +11,7 @@ module.exports = {
 	// Transactional
 	...require('./tripRequest'),
 	...require('./scheduleRequest'),
-	...require('./routeStopRequest'),
 	...require('./scheduleDayRequest'),
-	...require('./routePassengerRequest'),
 	...require('./pickupRecordRequest'),
 	...require('./messageRequest'),
 	...require('./notificationRequest'),

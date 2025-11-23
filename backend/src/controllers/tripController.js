@@ -106,10 +106,27 @@ async function updatePickupRecord(req, res, next) {
 	} catch (err) { next(err); }
 }
 
+async function getPickupRecord(req, res, next) {
+	try {
+		const { recordId } = req.params;
+		const result = await tripService.getPickupRecordById(Number(recordId));
+		const status = result.success ? 200 : 404;
+		res.status(status).json(result);
+	} catch (err) { next(err); }
+}
+
+async function deletePickupRecord(req, res, next) {
+	try {
+		const { recordId } = req.params;
+		const result = await tripService.deletePickupRecord(Number(recordId));
+		res.json(result);
+	} catch (err) { next(err); }
+}
+
 module.exports = {
 	handleValidation,
 	// Trips
 	listTrips, getTrip, createTrip, updateTrip, deleteTrip,
 	// Pickup records
-	listPickupRecords, createPickupRecord, updatePickupRecord,
+	listPickupRecords, createPickupRecord, updatePickupRecord, getPickupRecord, deletePickupRecord,
 };

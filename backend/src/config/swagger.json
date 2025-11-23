@@ -1,0 +1,1994 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Smart School Bus Tracking API",
+		"description": "API documentation for the Smart School Bus Tracking System.\n\nNOTE: In `app.js` the swagger loader points to `swagger.yml`. Either switch it to this `swagger.json` or convert this JSON to YAML.",
+		"version": "1.0.0"
+	},
+	"servers": [
+		{
+			"url": "/api/v1",
+			"description": "Base API version 1"
+		}
+	],
+	"tags": [
+		{
+			"name": "Users"
+		},
+		{
+			"name": "Roles"
+		},
+		{
+			"name": "Buses"
+		},
+		{
+			"name": "Routes"
+		},
+		{
+			"name": "Route Stops"
+		},
+		{
+			"name": "Route Passengers"
+		},
+		{
+			"name": "Stops"
+		},
+		{
+			"name": "Students"
+		},
+		{
+			"name": "Schedules"
+		},
+		{
+			"name": "Schedule Days"
+		},
+		{
+			"name": "Trips"
+		},
+		{
+			"name": "Pickup Records"
+		},
+		{
+			"name": "Messages"
+		},
+		{
+			"name": "Notifications"
+		},
+		{
+			"name": "User Notifications"
+		}
+	],
+	"components": {
+		"schemas": {
+			"ApiResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"data": {
+						"nullable": true
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
+					}
+				}
+			},
+			"Pagination": {
+				"type": "object",
+				"properties": {
+					"page": {
+						"type": "integer"
+					},
+					"pageSize": {
+						"type": "integer"
+					},
+					"total": {
+						"type": "integer"
+					},
+					"pages": {
+						"type": "integer"
+					}
+				}
+			},
+			"User": {
+				"type": "object",
+				"properties": {
+					"user_id": {
+						"type": "integer"
+					},
+					"role_id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"phone_number": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string",
+						"format": "email"
+					},
+					"locked": {
+						"type": "boolean"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"role_id",
+					"name"
+				]
+			},
+			"Role": {
+				"type": "object",
+				"properties": {
+					"role_id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					}
+				}
+			},
+			"Bus": {
+				"type": "object",
+				"properties": {
+					"bus_id": {
+						"type": "integer"
+					},
+					"plate_number": {
+						"type": "string"
+					},
+					"model": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"ACTIVE",
+							"INACTIVE",
+							"MAINTENANCE",
+							"OUT_OF_SERVICE"
+						]
+					},
+					"capacity": {
+						"type": "integer"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"plate_number"
+				]
+			},
+			"Route": {
+				"type": "object",
+				"properties": {
+					"route_id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"name"
+				]
+			},
+			"Stop": {
+				"type": "object",
+				"properties": {
+					"stop_id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"latitude": {
+						"type": "number"
+					},
+					"longitude": {
+						"type": "number"
+					},
+					"address": {
+						"type": "string"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"name",
+					"latitude",
+					"longitude"
+				]
+			},
+			"Student": {
+				"type": "object",
+				"properties": {
+					"student_id": {
+						"type": "integer"
+					},
+					"parent_id": {
+						"type": "integer",
+						"nullable": true
+					},
+					"class_id": {
+						"type": "integer",
+						"nullable": true
+					},
+					"name": {
+						"type": "string"
+					},
+					"gender": {
+						"type": "string",
+						"enum": [
+							"MALE",
+							"FEMALE",
+							"OTHER"
+						]
+					},
+					"date_of_birth": {
+						"type": "string",
+						"format": "date"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"name"
+				]
+			},
+			"Schedule": {
+				"type": "object",
+				"properties": {
+					"schedule_id": {
+						"type": "integer"
+					},
+					"route_id": {
+						"type": "integer"
+					},
+					"bus_id": {
+						"type": "integer"
+					},
+					"driver_id": {
+						"type": "integer"
+					},
+					"shift": {
+						"type": "string",
+						"enum": [
+							"MORNING",
+							"AFTERNOON"
+						]
+					},
+					"start_time": {
+						"type": "string",
+						"pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$"
+					},
+					"end_time": {
+						"type": "string",
+						"pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?$"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"route_id",
+					"bus_id",
+					"driver_id",
+					"start_time",
+					"end_time"
+				]
+			},
+			"Trip": {
+				"type": "object",
+				"properties": {
+					"trip_id": {
+						"type": "integer"
+					},
+					"schedule_id": {
+						"type": "integer"
+					},
+					"trip_date": {
+						"type": "string",
+						"format": "date"
+					},
+					"driver_id": {
+						"type": "integer",
+						"nullable": true
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"SCHEDULED",
+							"IN_PROGRESS",
+							"COMPLETED",
+							"CANCELLED"
+						]
+					},
+					"actual_start_time": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"actual_end_time": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updated_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"schedule_id",
+					"trip_date"
+				]
+			},
+			"Message": {
+				"type": "object",
+				"properties": {
+					"message_id": {
+						"type": "integer"
+					},
+					"sender_id": {
+						"type": "integer",
+						"nullable": true
+					},
+					"message_text": {
+						"type": "string"
+					},
+					"sent_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"message_text"
+				]
+			},
+			"Notification": {
+				"type": "object",
+				"properties": {
+					"notification_id": {
+						"type": "integer"
+					},
+					"message_id": {
+						"type": "integer"
+					},
+					"sent_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"INFO",
+							"SUCCESS",
+							"ALERT",
+							"REMINDER",
+							"WARNING",
+							"SYSTEM"
+						]
+					}
+				},
+				"required": [
+					"message_id"
+				]
+			},
+			"PickupRecord": {
+				"type": "object",
+				"properties": {
+					"record_id": {
+						"type": "integer"
+					},
+					"student_id": {
+						"type": "integer"
+					},
+					"stop_id": {
+						"type": "integer"
+					},
+					"trip_id": {
+						"type": "integer"
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"PICKED_UP",
+							"DROPPED_OFF",
+							"MISSED",
+							"WAITING"
+						]
+					},
+					"recorded_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"student_id",
+					"stop_id",
+					"trip_id"
+				]
+			},
+			"ScheduleDay": {
+				"type": "object",
+				"properties": {
+					"day_id": {
+						"type": "integer"
+					},
+					"schedule_id": {
+						"type": "integer"
+					},
+					"weekday": {
+						"type": "string",
+						"enum": [
+							"MON",
+							"TUE",
+							"WED",
+							"THU",
+							"FRI",
+							"SAT",
+							"SUN"
+						]
+					}
+				},
+				"required": [
+					"schedule_id",
+					"weekday"
+				]
+			},
+			"UserNotification": {
+				"type": "object",
+				"properties": {
+					"notification_id": {
+						"type": "integer"
+					},
+					"recipient_id": {
+						"type": "integer"
+					},
+					"read": {
+						"type": "boolean"
+					},
+					"read_at": {
+						"type": "string",
+						"format": "date-time"
+					}
+				}
+			}
+		},
+		"parameters": {
+			"UserId": {
+				"name": "userId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"RoleId": {
+				"name": "roleId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"BusId": {
+				"name": "busId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"RouteId": {
+				"name": "routeId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"StopId": {
+				"name": "stopId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"StudentId": {
+				"name": "studentId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"ScheduleId": {
+				"name": "scheduleId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"TripId": {
+				"name": "tripId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"MessageId": {
+				"name": "messageId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"NotificationId": {
+				"name": "notificationId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"RecordId": {
+				"name": "recordId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			},
+			"RecipientId": {
+				"name": "recipientId",
+				"in": "path",
+				"required": true,
+				"schema": {
+					"type": "integer"
+				}
+			}
+		}
+	},
+	"security": [
+		{
+			"BearerAuth": []
+		}
+	],
+	"paths": {
+		"/health": {
+			"get": {
+				"tags": [
+					"System"
+				],
+				"summary": "Health check",
+				"responses": {
+					"200": {
+						"description": "OK",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"status": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/users": {
+			"get": {
+				"tags": [
+					"Users"
+				],
+				"summary": "List users",
+				"responses": {
+					"200": {
+						"description": "Users list",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Users"
+				],
+				"summary": "Create user",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/User"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/users/{userId}": {
+			"get": {
+				"tags": [
+					"Users"
+				],
+				"summary": "Get user",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/UserId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "User",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Not found"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Users"
+				],
+				"summary": "Update user",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/UserId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/User"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Users"
+				],
+				"summary": "Delete user",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/UserId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					},
+					"404": {
+						"description": "Not found"
+					}
+				}
+			}
+		},
+		"/roles": {
+			"get": {
+				"tags": [
+					"Roles"
+				],
+				"summary": "List roles",
+				"responses": {
+					"200": {
+						"description": "Roles",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Roles"
+				],
+				"summary": "Create role",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Role"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/roles/{roleId}": {
+			"get": {
+				"tags": [
+					"Roles"
+				],
+				"summary": "Get role",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RoleId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Role"
+					},
+					"404": {
+						"description": "Not found"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Roles"
+				],
+				"summary": "Update role",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RoleId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Role"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Roles"
+				],
+				"summary": "Delete role",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RoleId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/buses": {
+			"get": {
+				"tags": [
+					"Buses"
+				],
+				"summary": "List buses",
+				"responses": {
+					"200": {
+						"description": "Buses",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiResponse"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Buses"
+				],
+				"summary": "Create bus",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Bus"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/buses/{busId}": {
+			"get": {
+				"tags": [
+					"Buses"
+				],
+				"summary": "Get bus",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BusId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Bus"
+					},
+					"404": {
+						"description": "Not found"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Buses"
+				],
+				"summary": "Update bus",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BusId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Bus"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Buses"
+				],
+				"summary": "Delete bus",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BusId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/routes": {
+			"get": {
+				"tags": [
+					"Routes"
+				],
+				"summary": "List routes",
+				"responses": {
+					"200": {
+						"description": "Routes"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Routes"
+				],
+				"summary": "Create route",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Route"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/routes/{routeId}": {
+			"get": {
+				"tags": [
+					"Routes"
+				],
+				"summary": "Get route",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RouteId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Route"
+					},
+					"404": {
+						"description": "Not found"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Routes"
+				],
+				"summary": "Update route",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RouteId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Route"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Routes"
+				],
+				"summary": "Delete route",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RouteId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/routes/{routeId}/stops": {
+			"get": {
+				"tags": [
+					"Route Stops"
+				],
+				"summary": "List stops in route",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RouteId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Stops"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Route Stops"
+				],
+				"summary": "Replace route stops",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RouteId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/Stop"
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Replaced"
+					}
+				}
+			}
+		},
+		"/routes/{routeId}/passengers": {
+			"get": {
+				"tags": [
+					"Route Passengers"
+				],
+				"summary": "List passengers in route",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RouteId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Students"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Route Passengers"
+				],
+				"summary": "Replace route passengers",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RouteId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/Student"
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Replaced"
+					}
+				}
+			}
+		},
+		"/stops": {
+			"get": {
+				"tags": [
+					"Stops"
+				],
+				"summary": "List stops",
+				"responses": {
+					"200": {
+						"description": "Stops"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Stops"
+				],
+				"summary": "Create stop",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Stop"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/stops/{stopId}": {
+			"get": {
+				"tags": [
+					"Stops"
+				],
+				"summary": "Get stop",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/StopId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Stop"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Stops"
+				],
+				"summary": "Update stop",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/StopId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Stop"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Stops"
+				],
+				"summary": "Delete stop",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/StopId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/students": {
+			"get": {
+				"tags": [
+					"Students"
+				],
+				"summary": "List students",
+				"responses": {
+					"200": {
+						"description": "Students"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Students"
+				],
+				"summary": "Create student",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Student"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/students/{studentId}": {
+			"get": {
+				"tags": [
+					"Students"
+				],
+				"summary": "Get student",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/StudentId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Student"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Students"
+				],
+				"summary": "Update student",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/StudentId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Student"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Students"
+				],
+				"summary": "Delete student",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/StudentId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/schedules": {
+			"get": {
+				"tags": [
+					"Schedules"
+				],
+				"summary": "List schedules",
+				"responses": {
+					"200": {
+						"description": "Schedules"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Schedules"
+				],
+				"summary": "Create schedule",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Schedule"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/schedules/{scheduleId}": {
+			"get": {
+				"tags": [
+					"Schedules"
+				],
+				"summary": "Get schedule",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ScheduleId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Schedule"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Schedules"
+				],
+				"summary": "Update schedule",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ScheduleId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Schedule"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Schedules"
+				],
+				"summary": "Delete schedule",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ScheduleId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/schedules/{scheduleId}/days": {
+			"get": {
+				"tags": [
+					"Schedule Days"
+				],
+				"summary": "List schedule days",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ScheduleId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Days"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Schedule Days"
+				],
+				"summary": "Replace schedule days",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/ScheduleId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/ScheduleDay"
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Replaced"
+					}
+				}
+			}
+		},
+		"/trips": {
+			"get": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "List trips",
+				"responses": {
+					"200": {
+						"description": "Trips"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "Create trip",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Trip"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/trips/{tripId}": {
+			"get": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "Get trip",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/TripId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Trip"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "Update trip",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/TripId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Trip"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Trips"
+				],
+				"summary": "Delete trip",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/TripId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/pickup-records": {
+			"get": {
+				"tags": [
+					"Pickup Records"
+				],
+				"summary": "List pickup records",
+				"responses": {
+					"200": {
+						"description": "Pickup Records"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Pickup Records"
+				],
+				"summary": "Create pickup record",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PickupRecord"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/pickup-records/{recordId}": {
+			"get": {
+				"tags": [
+					"Pickup Records"
+				],
+				"summary": "Get pickup record",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RecordId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Record"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Pickup Records"
+				],
+				"summary": "Update pickup record",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RecordId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PickupRecord"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Pickup Records"
+				],
+				"summary": "Delete pickup record",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RecordId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/messages": {
+			"get": {
+				"tags": [
+					"Messages"
+				],
+				"summary": "List messages",
+				"responses": {
+					"200": {
+						"description": "Messages"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Messages"
+				],
+				"summary": "Create message",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Message"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/messages/{messageId}": {
+			"get": {
+				"tags": [
+					"Messages"
+				],
+				"summary": "Get message",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/MessageId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Message"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Messages"
+				],
+				"summary": "Update message",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/MessageId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Message"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Messages"
+				],
+				"summary": "Delete message",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/MessageId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/notifications": {
+			"get": {
+				"tags": [
+					"Notifications"
+				],
+				"summary": "List notifications",
+				"responses": {
+					"200": {
+						"description": "Notifications"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Notifications"
+				],
+				"summary": "Create notification",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Notification"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/notifications/{notificationId}": {
+			"get": {
+				"tags": [
+					"Notifications"
+				],
+				"summary": "Get notification",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/NotificationId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Notification"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Notifications"
+				],
+				"summary": "Update notification",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/NotificationId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Notification"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Notifications"
+				],
+				"summary": "Delete notification",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/NotificationId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			}
+		},
+		"/user-notifications": {
+			"get": {
+				"tags": [
+					"User Notifications"
+				],
+				"summary": "List user notifications",
+				"responses": {
+					"200": {
+						"description": "User Notifications"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"User Notifications"
+				],
+				"summary": "Create user notification",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UserNotification"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				}
+			}
+		},
+		"/user-notifications/{notificationId}/recipients/{recipientId}": {
+			"put": {
+				"tags": [
+					"User Notifications"
+				],
+				"summary": "Update user notification",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/NotificationId"
+					},
+					{
+						"$ref": "#/components/parameters/RecipientId"
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UserNotification"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"User Notifications"
+				],
+				"summary": "Delete user notification",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/NotificationId"
+					},
+					{
+						"$ref": "#/components/parameters/RecipientId"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Deleted"
+					}
+				}
+			},
+			"patch": {
+				"tags": [
+					"User Notifications"
+				],
+				"summary": "Mark notification read",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/NotificationId"
+					},
+					{
+						"$ref": "#/components/parameters/RecipientId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Marked read"
+					}
+				}
+			}
+		},
+		"/user-notifications/recipients/{recipientId}/read": {
+			"patch": {
+				"tags": [
+					"User Notifications"
+				],
+				"summary": "Bulk mark notifications read for recipient",
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/RecipientId"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Bulk marked read"
+					}
+				}
+			}
+		}
+	}
+}

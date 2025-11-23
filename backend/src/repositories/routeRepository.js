@@ -1,33 +1,20 @@
-const { Route, RouteStop, RoutePassenger, Stop, Student } = require('../models');
+const { Route, RouteStop, RoutePassenger, Student } = require('../models');
 const { Op } = require('sequelize');
 
 const PK = 'route_id';
 
-// Support applying Sequelize scopes defined in models/index.js
-function getModelWithScope(options) {
-	const scope = options && options.scope;
-	return scope ? Route.scope(scope) : Route;
-}
-
 async function findById(id, options = {}) {
-	const Model = getModelWithScope(options);
-	const { scope, ...restOptions } = options || {};
-	return Model.findByPk(id, restOptions);
+	return Route.scope('withOrderedStopsAndStudents').findByPk(id, options);
 }
 
 async function findOne(where = {}, options = {}) {
-	const Model = getModelWithScope(options);
-	const { scope, ...restOptions } = options || {};
-	return Model.findOne({ where, ...restOptions });
+	return Route.scope('withOrderedStopsAndStudents').findOne({ where, ...options });
 }
 
 async function list(
 	{ filter = {}, sort, page = 0, pageSize = 10 } = {},
 	options = {}
 ) {
-	const Model = getModelWithScope(options);
-	const { scope, ...restOptions } = options || {};
-
 	const order = sort
 		? [[sort.field, sort.direction === 'DESC' ? 'DESC' : 'ASC']]
 		: undefined;
@@ -40,12 +27,12 @@ async function list(
 		where.name = { [Op.like]: `%${String(filter.name).trim()}%` };
 	}
 
-	const { rows, count } = await Model.findAndCountAll({
+	const { rows, count } = await Route.findAndCountAll({
 		where,
 		order,
 		limit,
 		offset,
-		...restOptions,
+		...options,
 	});
 
 	const totalPages = pageSize ? Math.ceil(count / pageSize) : 0;
@@ -53,7 +40,7 @@ async function list(
 }
 
 async function create(data, options = {}) {
-	return Route.create(data, options);
+	return Route.scope('withOrderedStopsAndStudents').create(data, options);
 }
 
 async function bulkCreate(listData = [], options = {}) {
@@ -99,21 +86,34 @@ async function replaceRouteStops(routeId, stops = [], options = {}) {
 
 // ----- Route Passengers management -----
 async function getRoutePassengers(routeId, options = {}) {
-	return RoutePassenger.findAll({
+	return RoutePassenger.scope('withStudentAndStop').findAll({
 		where: { route_id: routeId },
-		// include: [{ model: Student }],
 		...options,
 	});
 }
 
-async function replaceRoutePassengers(routeId, studentIds = [], options = {}) {
+async function replaceRoutePassengersForStop(routeId, stopId, studentIds = [], options = {}) {
 	const { transaction } = options;
-	await RoutePassenger.destroy({ where: { route_id: routeId }, transaction });
+
+	// Remove existing passengers for this stop
+	await RoutePassenger.destroy({
+		where: { route_id: routeId, stop_id: stopId },
+		transaction,
+	});
+
 	if (!studentIds || studentIds.length === 0) return [];
-	const rows = studentIds.map((sid) => ({ route_id: routeId, student_id: sid }));
+
+	// Bulk insert new passengers
+	const rows = studentIds.map(student_id => ({ route_id: routeId, stop_id: stopId, student_id }));
 	await RoutePassenger.bulkCreate(rows, { validate: true, transaction });
-	return getRoutePassengers(routeId, { transaction });
+
+	// Return inserted passengers
+	return RoutePassenger.findAll({
+		where: { route_id: routeId, stop_id: stopId },
+		transaction,
+	});
 }
+
 
 module.exports = {
 	findById,
@@ -127,5 +127,5 @@ module.exports = {
 	getRouteStops,
 	replaceRouteStops,
 	getRoutePassengers,
-	replaceRoutePassengers,
+	replaceRoutePassengersForStop,
 };

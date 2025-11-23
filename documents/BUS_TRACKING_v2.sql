@@ -127,11 +127,13 @@ CREATE TABLE route_stops (
   stop_order INT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Students assigned to routes (many-to-many)
+-- Students assigned to routes and stops of that route (many-to-many)
 CREATE TABLE route_passengers (
-  route_id INT NOT NULL,
-  student_id INT NOT NULL
+  route_id INT,
+  student_id INT,
+  stop_id INT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 -- Trips: Actual bus trips on specific routes
 CREATE TABLE trips (
@@ -272,10 +274,10 @@ INSERT INTO trips (schedule_id, trip_date, status, actual_start_time, actual_end
 (2, '2025-10-11', 'SCHEDULED', NULL, NULL, NULL);                               -- Trip ID 2 (Schedule 2, Route 2)
 
 -- Route Passengers
-INSERT INTO route_passengers (route_id, student_id) VALUES
-(1, 1),
-(1, 2),
-(2, 3);
+INSERT INTO route_passengers (route_id, student_id, stop_id) VALUES
+(1, 1, 1), -- Phạm Tuấn Kiệt on Route 1 at Stop 1
+(1, 2, 2), -- Phạm Ngọc Mai on Route 1 at Stop 2
+(2, 3, 4); -- Trần Quốc Huy on Route 2 at Stop 4
 
 -- Pickup Records
 INSERT INTO pickup_records (student_id, stop_id, trip_id, status, recorded_at) VALUES
@@ -308,7 +310,7 @@ INSERT INTO user_notifications (notification_id, recipient_id, read_status) VALU
 -- PRIMARY KEY AND UNIQUE CONSTRAINTS (COMPOSITE)
 ALTER TABLE schedule_days ADD PRIMARY KEY (schedule_id, day_of_week);
 ALTER TABLE route_stops ADD PRIMARY KEY (route_id, stop_id);
-ALTER TABLE route_passengers ADD PRIMARY KEY (route_id, student_id);
+ALTER TABLE route_passengers ADD PRIMARY KEY (route_id, student_id, stop_id);
 ALTER TABLE user_notifications ADD PRIMARY KEY (notification_id, recipient_id);
 
 
@@ -346,7 +348,8 @@ ALTER TABLE trips
 -- Route Passengers
 ALTER TABLE route_passengers
   ADD CONSTRAINT fk_route_passengers_route FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE CASCADE,
-  ADD CONSTRAINT fk_route_passengers_student FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE;
+  ADD CONSTRAINT fk_route_passengers_student FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+  ADD CONSTRAINT fk_route_passengers_stop FOREIGN KEY (stop_id) REFERENCES stops(stop_id) ON DELETE CASCADE;
 
 -- Logs & Records
 ALTER TABLE pickup_records

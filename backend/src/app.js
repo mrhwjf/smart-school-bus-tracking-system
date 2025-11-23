@@ -1,11 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
-const YAML = require('yamljs');
 const globalExceptionHandler = require('./exception/globalExceptionHandler');
-
-// Load Swagger YAML
-const swaggerDocument = YAML.load('src/config/swagger.yml');
+const swaggerDocument = require('./config/swagger.json');
 
 // Initialize Express app
 const app = express();
@@ -15,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // Health check endpoint
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/v1/health', (req, res) => res.json({ status: 'ok' }));
 
 // Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {

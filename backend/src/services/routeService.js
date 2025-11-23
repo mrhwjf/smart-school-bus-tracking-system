@@ -20,7 +20,7 @@ async function getRouteById(routeId, options = {}) {
 async function createRoute(data, options = {}) {
 	const created = await RouteRepository.create({
 		name: data.name,
-		description: data.description,
+		description: data.description
 	}, options);
 	return apiResponse.success('Route created successfully', toRouteDto(created));
 }
@@ -54,14 +54,21 @@ async function replaceRouteStops(routeId, stops = []) {
 async function getRoutePassengers(routeId, options = {}) {
 	const rows = await RouteRepository.getRoutePassengers(routeId, options);
 	const items = rows.map(toRoutePassengerDto);
-	return apiResponse.success('Route passengers fetched successfully', items);
+	return apiResponse.success('Route passengers fetched successfully', rows);
 }
 
-async function replaceRoutePassengers(routeId, studentIds = []) {
+async function replaceRoutePassengers(routeId, stops = []) {
 	return sequelize.transaction(async (t) => {
-		const replaced = await RouteRepository.replaceRoutePassengers(routeId, studentIds, { transaction: t });
-		const items = replaced.map(toRoutePassengerDto);
-		return apiResponse.success('Route passengers replaced successfully', items);
+		const replaced = [];
+
+		for (const stop of stops) {
+			const items = await RouteRepository.replaceRoutePassengersForStop(routeId, stop.stopId, stop.studentIds, { transaction: t });
+			replaced.push(...items);
+		}
+
+		// Map to DTOs
+		const dtos = replaced.map(toRoutePassengerDto);
+		return apiResponse.success('Route passengers replaced successfully', dtos);
 	});
 }
 
