@@ -64,6 +64,19 @@ db.ScheduleDay.belongsTo(db.Schedule, { foreignKey: 'schedule_id', targetKey: 's
 db.Route.belongsToMany(db.Stop, { through: db.RouteStop, foreignKey: 'route_id', otherKey: 'stop_id' });
 db.Stop.belongsToMany(db.Route, { through: db.RouteStop, foreignKey: 'stop_id', otherKey: 'route_id' });
 
+// RoutePassenger → Student
+db.RoutePassenger.belongsTo(db.Student, { foreignKey: 'student_id' });
+db.Student.hasMany(db.RoutePassenger, { foreignKey: 'student_id' });
+
+// RoutePassenger → Stop
+db.RoutePassenger.belongsTo(db.Stop, { foreignKey: 'stop_id' });
+db.Stop.hasMany(db.RoutePassenger, { foreignKey: 'stop_id' });
+
+// RoutePassenger → Route (optional)
+db.RoutePassenger.belongsTo(db.Route, { foreignKey: 'route_id' });
+db.Route.hasMany(db.RoutePassenger, { foreignKey: 'route_id' });
+
+
 // Schedule -> Trip
 db.Schedule.hasMany(db.Trip, { foreignKey: 'schedule_id', sourceKey: 'schedule_id', onDelete: 'RESTRICT' });
 db.Trip.belongsTo(db.Schedule, { foreignKey: 'schedule_id', targetKey: 'schedule_id', onDelete: 'RESTRICT' });
@@ -77,6 +90,8 @@ db.Trip.belongsTo(db.Driver, { foreignKey: { name: 'driver_id', allowNull: true 
 // Route <-> Student through RoutePassenger
 db.Route.belongsToMany(db.Student, { through: db.RoutePassenger, foreignKey: 'route_id', otherKey: 'student_id' });
 db.Student.belongsToMany(db.Route, { through: db.RoutePassenger, foreignKey: 'student_id', otherKey: 'route_id' });
+
+// Route <-> Stop through 
 
 // PickupRecord -> Student, Stop, Trip
 db.Student.hasMany(db.PickupRecord, { foreignKey: 'student_id', sourceKey: 'student_id' });
@@ -140,38 +155,44 @@ db.Student.addScope('withLatestRecords', {
 	}]
 });
 
-// --- Scopes for Schedule Model ---
-db.Schedule.addScope('withFullDetails', {
+// --- Scopes for Route Model ---
+db.Route.addScope('withOrderedStopsAndStudents', {
 	include: [
 		{
-			model: db.Route, include:
-				[
-					{ model: db.Stop, through: db.RouteStop },
-					{ model: db.Student, through: db.RoutePassenger }
-				]
-		},
-		{ model: db.Bus },
-		{ model: db.Driver },
-		{ model: db.ScheduleDay },
+			model: db.Stop,
+			through: { attributes: ['stop_order'] },           // stop_order from RouteStop
+			include: [
+				{
+					model: db.RoutePassenger,
+					include: [
+						{
+							model: db.Student.scope('withClass', 'withParent')
+						}
+					]
+				}
+			],
+		}
+	],
+	order: [[db.Stop, db.RouteStop, 'stop_order', 'ASC']] // stops ordered by stop_order
+});
+
+// --- Scopes for RoutePassenger Model ---
+db.RoutePassenger.addScope('withStudentAndStop', {
+	include: [
+		{ model: db.Student.scope('withClass', 'withParent') },
+		{ model: db.Stop }
 	]
 });
 
-
-// --- Scopes for Route Model ---
-db.Route.addScope('withOrderedStops', {
-	// Fetches the stops for the route, ordered by 'stop_order'.
-	include: [{
-		model: db.Stop,
-		through: { attributes: ['stop_order'] },
-		order: [[db.Stop, db.RouteStop, 'stop_order', 'ASC']]
-	}]
+// --- Scopes for Schedule Model ---
+db.Schedule.addScope('withFullDetails', {
+	include: [
+		{ model: db.Route.scope('withOrderedStopsAndStudents') },
+		{ model: db.Bus },
+		{ model: db.Driver },
+		{ model: db.ScheduleDay }
+	]
 });
-
-db.Route.addScope('withCurrentPassengers', {
-	// Fetches all students (passengers) assigned to this route.
-	include: [{ model: db.Student, through: db.RoutePassenger }]
-});
-
 
 // --- Scopes for Trip Model ---
 db.Trip.addScope('withFullDetails', {

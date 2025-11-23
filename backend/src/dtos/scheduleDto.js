@@ -1,10 +1,10 @@
 const { toRouteDto } = require('./routeDto');
 const { toBusDto } = require('./busDto');
 const { toDriverDto } = require('./driverDto');
-const { toStudentDto } = require('./studentDto');
 
 function toScheduleDto(s) {
 	if (!s) return null;
+
 	return {
 		scheduleId: s.schedule_id,
 		routeId: s.route_id,
@@ -14,13 +14,11 @@ function toScheduleDto(s) {
 		startTime: s.start_time,
 		endTime: s.end_time,
 		active: !!s.active,
+
 		route: s.Route ? toRouteDto(s.Route) : undefined,
 		bus: s.Bus ? toBusDto(s.Bus) : undefined,
 		driver: s.Driver ? toDriverDto(s.Driver) : undefined,
-		days: s.ScheduleDays ? s.ScheduleDays.map(sd => sd.day_of_week) : undefined,
-		passengers: s.Route?.Students
-			? s.Route.Students.map(stu => toStudentDto(stu))
-			: undefined
+		days: s.ScheduleDays?.map(sd => sd.day_of_week),
 	};
 }
 

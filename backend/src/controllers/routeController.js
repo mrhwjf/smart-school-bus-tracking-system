@@ -78,11 +78,22 @@ async function getRoutePassengers(req, res, next) {
 async function replaceRoutePassengers(req, res, next) {
 	try {
 		const { routeId } = req.params;
-		const { studentIds = [] } = req.body || {};
-		const result = await routeService.replaceRoutePassengers(Number(routeId), studentIds);
+		const { stops = [] } = req.body || {};
+
+		// Transform stops into { stopId, studentIds }
+		const payload = stops.map(s => ({
+			stopId: s.stopId,
+			studentIds: s.studentIds || [],   // <--- use studentIds from request body
+		}));
+
+
+		const result = await routeService.replaceRoutePassengers(Number(routeId), payload);
 		res.json(result);
-	} catch (err) { next(err); }
+	} catch (err) {
+		next(err);
+	}
 }
+
 
 module.exports = {
 	listRoutes,

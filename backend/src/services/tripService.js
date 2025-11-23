@@ -82,9 +82,20 @@ async function updatePickupRecord(recordId, changes, options = {}) {
 	return apiResponse.success('Pickup record updated successfully', toPickupRecordDto(updated));
 }
 
+async function getPickupRecordById(recordId, options = {}) {
+	const record = await PickupRecordRepository.findById(recordId, options);
+	if (!record) return apiResponse.failure('Pickup record not found');
+	return apiResponse.success('Pickup record fetched successfully', toPickupRecordDto(record));
+}
+
+async function deletePickupRecord(recordId, options = {}) {
+	const deleted = await PickupRecordRepository.deleteById(recordId, options);
+	return apiResponse.success('Pickup record deleted successfully', { deleted });
+}
+
 module.exports = {
 	// Trips
 	listTrips, getTripById, createTrip, updateTrip, deleteTrip,
 	// Pickup records
-	listPickupRecords, createPickupRecord, updatePickupRecord,
+	listPickupRecords, createPickupRecord, updatePickupRecord, getPickupRecordById, deletePickupRecord,
 };
