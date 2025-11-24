@@ -385,22 +385,4 @@ CREATE INDEX idx_pr_composite ON pickup_records(student_id, stop_id, trip_id);
 CREATE INDEX idx_notifications_message ON notifications(message_id);
 CREATE INDEX idx_un_recipient_read ON user_notifications(recipient_id, read_status);
 
--- Thêm bảng stop_passengers để cho biết học sinh nào sẽ lên/xuống tại điểm dừng nào của 1 tuyến
-CREATE TABLE stop_passengers (
-  stop_id INT NOT NULL,
-  route_id INT NOT NULL,
-  student_id INT NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-ALTER TABLE stop_passengers ADD PRIMARY KEY (stop_id, route_id, student_id);
-ALTER TABLE stop_passengers
-  ADD CONSTRAINT fk_sp_stop FOREIGN KEY (stop_id) REFERENCES stops(stop_id) ON DELETE CASCADE,
-  ADD CONSTRAINT fk_sp_route FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE CASCADE,
-  ADD CONSTRAINT fk_sp_student FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE;
-
-INSERT INTO stop_passengers (stop_id, route_id, student_id) VALUES
-(1, 1, 1),
-(2, 1, 2),
-(4, 2, 3);
-
 -- Session table for authentication had been created separately using express-mysql-session package
