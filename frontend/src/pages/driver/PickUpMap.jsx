@@ -17,7 +17,6 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import PhoneIcon from "@mui/icons-material/Phone";
 import MenuIcon from "@mui/icons-material/Menu";
 import ReportIcon from "@mui/icons-material/Report";
 import WarningIcon from "@mui/icons-material/Warning";
@@ -27,8 +26,10 @@ import AlertIcon from "@mui/icons-material/ReportProblem";
 import Map from "../../components/driver/Map";
 import SubmitReport from "./SubmitReport";
 import SendAlert from "./SendAlert";
+import PersonIcon from "@mui/icons-material/Person";
 
-const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
+const PickUpMap = ({ onTripComplete }) => {
+  // NHẬN CALLBACK
   const tripData = {
     trip_id: 1,
     current_stop_index: 0,
@@ -38,8 +39,8 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
         name: "Điểm đón Nguyễn Huệ",
         order: 1,
         students: [
-          { id: 1, name: "Do Thien Phu", checked: false },
-          { id: 2, name: "Phuong cay", checked: false },
+          { id: 1, name: "Do Thien Phu", class: "5A", phoneNumber: "0123456789", checked: false },
+          { id: 2, name: "Phuong cay", class: "5A", phoneNumber: "0987654321", checked: false },
         ],
       },
       {
@@ -47,8 +48,8 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
         name: "Điểm đón Lý Tự Trọng",
         order: 2,
         students: [
-          { id: 3, name: "Phong Nguyen", checked: false },
-          { id: 4, name: "Khang Nguyen", checked: false },
+          { id: 3, name: "Phong Nguyen",  class: "5A",phoneNumber: "0112233445", checked: false },
+          { id: 4, name: "Khang Nguyen", class: "4A", phoneNumber: "0223344556", checked: false },
         ],
       },
       {
@@ -60,7 +61,9 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
     ],
   };
 
-  const [currentStopIndex, setCurrentStopIndex] = useState(tripData.current_stop_index);
+  const [currentStopIndex, setCurrentStopIndex] = useState(
+    tripData.current_stop_index
+  );
   const [students, setStudents] = useState(tripData.stops[0].students);
   const [menuOpen, setMenuOpen] = useState(false);
   const [view, setView] = useState("map");
@@ -72,22 +75,27 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
   const isLastStop = currentStopIndex === totalStops - 1;
 
   useEffect(() => {
-    setStudents(tripData.stops[currentStopIndex].students.map(s => ({ ...s, checked: false })));
+    setStudents(
+      tripData.stops[currentStopIndex].students.map((s) => ({
+        ...s,
+        checked: false,
+      }))
+    );
   }, [currentStopIndex]);
 
   const toggleStudent = (id) => {
-    setStudents(prev =>
-      prev.map(s => (s.id === id ? { ...s, checked: !s.checked } : s))
+    setStudents((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, checked: !s.checked } : s))
     );
   };
 
   const handleNextStop = () => {
-    const notPicked = students.filter(s => !s.checked);
+    const notPicked = students.filter((s) => !s.checked);
 
     if (notPicked.length > 0) {
       setMissedStudents(notPicked);
       setOpenMissedDialog(true);
-      notPicked.forEach(student => {
+      notPicked.forEach((student) => {
         console.log(`[MISSED] ${student.name} tại ${currentStop.name}`);
       });
     } else {
@@ -101,13 +109,27 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
     if (isLastStop) {
       setView("complete");
     } else {
-      setCurrentStopIndex(prev => prev + 1);
+      setCurrentStopIndex((prev) => prev + 1);
     }
   };
 
   const menuItems = [
-    { text: "Gửi báo cáo", icon: <ReportIcon color="primary" />, action: () => { setMenuOpen(false); setView("report"); } },
-    { text: "Gửi cảnh báo", icon: <WarningIcon color="error" />, action: () => { setMenuOpen(false); setView("alert"); } },
+    {
+      text: "Gửi báo cáo",
+      icon: <ReportIcon color="primary" />,
+      action: () => {
+        setMenuOpen(false);
+        setView("report");
+      },
+    },
+    {
+      text: "Gửi cảnh báo",
+      icon: <WarningIcon color="error" />,
+      action: () => {
+        setMenuOpen(false);
+        setView("alert");
+      },
+    },
   ];
 
   // === MÀN HÌNH PHỤ ===
@@ -134,7 +156,12 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
         <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
           Chuyến đi hoàn thành!
         </Typography>
-        <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 3 }}>
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          align="center"
+          sx={{ mb: 3 }}
+        >
           {missedStudents.length > 0
             ? `${missedStudents.length} học sinh vắng mặt.`
             : "Tất cả học sinh đã được đón/trả an toàn."}
@@ -149,11 +176,10 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
             fontWeight: 600,
             background: "linear-gradient(90deg, #4caf50, #66bb6a)",
             width: 300,
-            maxWidth: '70%',
-            alignSelf: 'center',
-            boxShadow: '0 6px 16px rgba(76,175,80,0.35)',
-            textTransform: 'none',
-            
+            maxWidth: "70%",
+            alignSelf: "center",
+            boxShadow: "0 6px 16px rgba(76,175,80,0.35)",
+            textTransform: "none",
           }}
         >
           Về trang chủ
@@ -163,26 +189,75 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
   }
 
   return (
-    <Box sx={{ position: "relative", width: 414, height: 896, margin: "0 auto", borderRadius: 3, overflow: "hidden", boxShadow: 3, bgcolor: "grey.100", display: "flex", flexDirection: "column" }}>
+    <Box
+      sx={{
+        position: "relative",
+        width: 414,
+        height: 896,
+        margin: "0 auto",
+        borderRadius: 3,
+        overflow: "hidden",
+        boxShadow: 3,
+        bgcolor: "grey.100",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       {/* MAP */}
       <Box sx={{ flex: 2, position: "relative" }}>
         <Map currentStop={currentStop} />
-        <IconButton onClick={() => setMenuOpen(true)} sx={{ position: "absolute", top: 12, right: 12, zIndex: 1000, bgcolor: "white", boxShadow: 2 }}>
+        <IconButton
+          onClick={() => setMenuOpen(true)}
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 1000,
+            bgcolor: "white",
+            boxShadow: 2,
+          }}
+        >
           <MenuIcon />
         </IconButton>
-        <Box sx={{ position: "absolute", top: 12, left: 12, bgcolor: "rgba(255,255,255,0.9)", px: 2, py: 1, borderRadius: 2, boxShadow: 1 }}>
-          <Typography variant="caption" sx={{ fontWeight: 600 }}>Điểm {currentStopIndex + 1}/{totalStops}</Typography>
+        <Box
+          sx={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            bgcolor: "rgba(255,255,255,0.9)",
+            px: 2,
+            py: 1,
+            borderRadius: 2,
+            boxShadow: 1,
+          }}
+        >
+          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+            Điểm {currentStopIndex + 1}/{totalStops}
+          </Typography>
         </Box>
       </Box>
 
       {/* BOTTOM PANEL */}
-      <Box sx={{ flex: 1, bgcolor: "white", px: 3, py: 3, boxShadow: "0 -6px 20px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box
+        sx={{
+          flex: 1,
+          bgcolor: "white",
+          px: 3,
+          py: 3,
+          boxShadow: "0 -6px 20px rgba(0,0,0,0.15)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
         <Typography align="center" sx={{ fontWeight: 600, color: "#2962ff" }}>
           {currentStop.name}
         </Typography>
 
         {students.length === 0 ? (
-          <Typography align="center" color="text.secondary">Không có học sinh tại điểm này</Typography>
+          <Typography align="center" color="text.secondary">
+            Không có học sinh tại điểm này
+          </Typography>
         ) : (
           students.map((s) => (
             <Box
@@ -194,24 +269,28 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
                 bgcolor: s.checked ? "#e8f5e9" : "grey.100",
                 px: 2,
                 py: 1.2,
-                borderRadius: 9999,
+                borderRadius: 2,
                 boxShadow: 1,
                 border: s.checked ? "1px solid #4caf50" : "none",
               }}
             >
               <Stack direction="row" spacing={1} alignItems="center">
-                <PhoneIcon color={s.checked ? "success" : "action"} />
+                <PersonIcon color={s.checked ? "success" : "action"} />
                 <Typography
                   sx={{
                     fontWeight: 500,
-                    textDecoration: s.checked ? "line-through" : "none",
+                    
                     color: s.checked ? "text.secondary" : "text.primary",
                   }}
                 >
-                  {s.name}
+                  {s.name} - {s.class} - {s.phoneNumber}
                 </Typography>
               </Stack>
-              <Switch checked={s.checked} onChange={() => toggleStudent(s.id)} color="success" />
+              <Switch
+                checked={s.checked}
+                onChange={() => toggleStudent(s.id)}
+                color="success"
+              />
             </Box>
           ))
         )}
@@ -219,7 +298,7 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
         <Button
           fullWidth
           variant="contained"
-          color={students.some(s => !s.checked) ? "warning" : "primary"}
+          color={students.some((s) => !s.checked) ? "warning" : "primary"}
           onClick={handleNextStop}
           sx={{
             borderRadius: "50px",
@@ -230,14 +309,17 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
         >
           {isLastStop
             ? "Hoàn thành chuyến"
-            : students.some(s => !s.checked)
-              ? `Đi tiếp (${students.filter(s => !s.checked).length} vắng)`
-              : "Đến điểm dừng tiếp theo"}
+            : students.some((s) => !s.checked)
+            ? `Đi tiếp (${students.filter((s) => !s.checked).length} vắng)`
+            : "Đến điểm dừng tiếp theo"}
         </Button>
       </Box>
 
       {/* DIALOG CẢNH BÁO MISSED */}
-      <Dialog open={openMissedDialog} onClose={() => setOpenMissedDialog(false)}>
+      <Dialog
+        open={openMissedDialog}
+        onClose={() => setOpenMissedDialog(false)}
+      >
         <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <AlertIcon color="warning" />
           Học sinh vắng mặt
@@ -247,14 +329,15 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
             <strong>{missedStudents.length} học sinh</strong> chưa được đón:
           </Typography>
           <List dense>
-            {missedStudents.map(s => (
+            {missedStudents.map((s) => (
               <ListItem key={s.id}>
                 <ListItemText primary={s.name} />
               </ListItem>
             ))}
           </List>
           <Typography variant="caption" color="text.secondary">
-            Họ sẽ được ghi nhận là <strong>nghỉ học</strong>. Bạn có muốn tiếp tục?
+            Họ sẽ được ghi nhận là <strong>nghỉ học</strong>. Bạn có muốn tiếp
+            tục?
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -293,9 +376,21 @@ const PickUpMap = ({ onTripComplete }) => {  // NHẬN CALLBACK
           zIndex: 2000,
         }}
       >
-        <Box sx={{ display: "flex", justifyContent: "space-between", px: 2, py: 1.5, bgcolor: "grey.50" }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "#2962ff" }}>MENU</Typography>
-          <IconButton onClick={() => setMenuOpen(false)}><CloseIcon /></IconButton>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            px: 2,
+            py: 1.5,
+            bgcolor: "grey.50",
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600, color: "#2962ff" }}>
+            MENU
+          </Typography>
+          <IconButton onClick={() => setMenuOpen(false)}>
+            <CloseIcon />
+          </IconButton>
         </Box>
         <Divider />
         <List>

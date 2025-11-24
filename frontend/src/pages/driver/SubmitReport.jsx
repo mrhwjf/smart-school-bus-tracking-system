@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -12,53 +12,90 @@ import {
   DialogContent,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import PhoneIcon from "@mui/icons-material/Phone";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import PersonIcon from "@mui/icons-material/Person";
+
+// 🔹 Dữ liệu tĩnh ra ngoài
+const INITIAL_STUDENTS = [
+  { id: 1, name: "Do Thien Phu", class: "5A", phoneNumber: "0123456789", checked: true },
+  { id: 2, name: "Phuong Cay", class: "5A", phoneNumber: "0987654321", checked: false },
+  { id: 3, name: "Phong Nguyen", class: "5A", phoneNumber: "0112233445", checked: false },
+  { id: 4, name: "Khang Nguyen", class: "4A", phoneNumber: "0223344556", checked: true },
+];
 
 const SubmitReport = ({ onBack }) => {
-  const [students, setStudents] = useState([
-    { id: 1, name: "Do Thien Phu", checked: true },
-    { id: 2, name: "Phuong Cay", checked: false },
-    { id: 3, name: "Phong Nguyen", checked: false },
-    { id: 4, name: "Khang Nguyen", checked: true },
-  ]);
-
-  const [openSuccess, setOpenSuccess] = useState(false);
+  const [students, setStudents] = useState(INITIAL_STUDENTS);
   const [loading, setLoading] = useState(false);
+  const [openSuccess, setOpenSuccess] = useState(false);
 
-  const handleToggle = (id) =>
+  // 🔹 Toggle student checked state
+  const handleToggle = useCallback((id) => {
     setStudents((prev) =>
       prev.map((s) => (s.id === id ? { ...s, checked: !s.checked } : s))
     );
+  }, []);
 
-  const handleSubmit = () => {
+  // 🔹 Submit handler
+  const handleSubmit = useCallback(() => {
     const selected = students.filter((s) => s.checked);
-
-    if (selected.length === 0) {
-      alert("Vui lòng chọn ít nhất 1 học sinh!");
-      return;
-    }
+    if (!selected.length) return alert("Vui lòng chọn ít nhất 1 học sinh!");
 
     setLoading(true);
-
-    // Giả lập gửi báo cáo (2 giây)
     setTimeout(() => {
-      console.log("Báo cáo đã gửi (local):", selected.map((s) => s.name));
-
+      console.log("Báo cáo đã gửi:", selected.map((s) => s.name));
       setLoading(false);
       setOpenSuccess(true);
 
-      // Tự động quay lại sau 1.5 giây
       setTimeout(() => {
         setOpenSuccess(false);
-        onBack(); // Quay lại PickUpMap
+        onBack();
       }, 1500);
     }, 1200);
-  };
+  }, [students, onBack]);
+
+  // 🔹 Render student list
+  const studentList = useMemo(
+    () =>
+      students.map((student) => (
+        <Paper
+          key={student.id}
+          elevation={1}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            p: 1.5,
+            mb: 1.5,
+            borderRadius: 9999,
+            bgcolor: student.checked ? "#e8f5e9" : "#f9f9f9",
+            border: student.checked ? "1px solid #4caf50" : "none",
+            transition: "all 0.2s",
+          }}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <PersonIcon color={student.checked ? "success" : "action"} />
+            <Typography
+              fontWeight={500}
+              sx={{
+                textDecoration: student.checked ? "line-through" : "none",
+                color: student.checked ? "text.secondary" : "text.primary",
+              }}
+            >
+              {student.name} {student.class ? `- ${student.class}` : ""} {student.phoneNumber ? `- ${student.phoneNumber}` : ""}
+            </Typography>
+          </Stack>
+          <Switch
+            checked={student.checked}
+            onChange={() => handleToggle(student.id)}
+            color="success"
+          />
+        </Paper>
+      )),
+    [students, handleToggle]
+  );
 
   return (
     <>
-      {/* MAIN SCREEN */}
       <Box
         sx={{
           width: 414,
@@ -88,45 +125,11 @@ const SubmitReport = ({ onBack }) => {
           </Typography>
         </Box>
 
-        {/* DANH SÁCH HỌC SINH */}
+        {/* STUDENT LIST */}
         <Box sx={{ p: 2, flex: 1, overflowY: "auto" }}>
-          {students.map((student) => (
-            <Paper
-              key={student.id}
-              elevation={1}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                p: 1.5,
-                mb: 1.5,
-                borderRadius: 9999,
-                bgcolor: student.checked ? "#e8f5e9" : "#f9f9f9",
-                border: student.checked ? "1px solid #4caf50" : "none",
-                transition: "all 0.2s",
-              }}
-            >
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <PhoneIcon color={student.checked ? "success" : "action"} />
-                <Typography
-                  fontWeight={500}
-                  sx={{
-                    textDecoration: student.checked ? "line-through" : "none",
-                    color: student.checked ? "text.secondary" : "text.primary",
-                  }}
-                >
-                  {student.name}
-                </Typography>
-              </Stack>
-              <Switch
-                checked={student.checked}
-                onChange={() => handleToggle(student.id)}
-                color="success"
-              />
-            </Paper>
-          ))}
+          {studentList}
 
-          {/* NÚT GỬI */}
+          {/* SUBMIT BUTTON */}
           <Button
             variant="contained"
             fullWidth
@@ -152,7 +155,7 @@ const SubmitReport = ({ onBack }) => {
         </Box>
       </Box>
 
-      {/* DIALOG THÀNH CÔNG */}
+      {/* SUCCESS DIALOG */}
       <Dialog
         open={openSuccess}
         PaperProps={{

@@ -4,8 +4,8 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const TripDetails = ({ trip, onBack }) => {
   const stops = [
-    { id: 1, name: "Stop 1", street: "Street name", students: 2, time: "07:15" },
-    { id: 2, name: "Stop 2", street: "Street name", students: 2, time: "07:30" },
+    { id: 1, name: "Stop 1", street: "Street name", students: 2 },
+    { id: 2, name: "Stop 2", street: "Street name", students: 2 },
   ];
 
   return (
@@ -21,7 +21,7 @@ const TripDetails = ({ trip, onBack }) => {
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6" sx={{ ml: 1, fontWeight: 600 }}>
-          Trip Details
+          Chi tiết chuyến
         </Typography>
       </Box>
 
@@ -53,9 +53,7 @@ const TripDetails = ({ trip, onBack }) => {
               <Typography variant="body2">{stop.students} Students</Typography>
             </Box>
             <Typography color="text.secondary">{stop.street}</Typography>
-            <Typography variant="body2" sx={{ textAlign: "right", mt: 1 }}>
-              {stop.time}
-            </Typography>
+            
           </CardContent>
         </Card>
       ))}
