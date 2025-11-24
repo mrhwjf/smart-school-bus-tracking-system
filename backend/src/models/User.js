@@ -36,7 +36,10 @@ module.exports = (sequelize, DataTypes) => {
 			byRoleId(roleId) { return { where: { role_id: roleId } }; },
 			byEmail(email) { return { where: { email } }; },
 			byPhoneNumber(phoneNumber) { return { where: { phone_number: phoneNumber } }; },
-			locked() { return { where: { locked: true } }; }
+			locked() { return { where: { locked: true } }; },
+			withPassword: {
+				attributes: { include: ['password_hash'] }
+			}
 		},
 		indexes: [
 			{ name: 'idx_users_role_id', fields: ['role_id'] }

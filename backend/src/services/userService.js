@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const {hashPassword} = require('../utils/hash');
 const apiResponse = require('../utils/apiResponse');
 const createPagination = require('../utils/pagination');
 const {
@@ -13,10 +14,10 @@ const {
 	UserRepository,
 } = require('../repositories');
 
-function hashPassword(plain) {
-	if (!plain) return null;
-	return crypto.createHash('sha256').update(String(plain)).digest('hex');
-}
+// function hashPassword(plain) {
+// 	if (!plain) return null;
+// 	return crypto.createHash('sha256').update(String(plain)).digest('hex');
+// }
 
 // Roles
 async function listRoles({ filter = {}, sort, page = 0, pageSize = 10 } = {}, options = {}) {
@@ -68,7 +69,7 @@ async function createUser(data, options = {}) {
 		name: data.name,
 		phone_number: data.phoneNumber,
 		email: data.email,
-		password_hash: hashPassword(data.password),
+		password_hash: await hashPassword(data.password),
 		locked: data.locked,
 	};
 	const created = await UserRepository.create(toCreate, options);
