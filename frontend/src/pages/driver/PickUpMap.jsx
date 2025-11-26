@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -7,9 +7,9 @@ import {
   Stack,
   IconButton,
   List,
-  ListItem,
   ListItemButton,
   ListItemIcon,
+  ListItem,
   ListItemText,
   Divider,
   Dialog,
@@ -17,49 +17,166 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
+
+// Components và Icons
 import MenuIcon from "@mui/icons-material/Menu";
 import ReportIcon from "@mui/icons-material/Report";
 import WarningIcon from "@mui/icons-material/Warning";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AlertIcon from "@mui/icons-material/ReportProblem";
-import Map from "../../components/driver/Map";
-import SubmitReport from "./SubmitReport";
-import SendAlert from "./SendAlert";
 import PersonIcon from "@mui/icons-material/Person";
 
+// Nhập các component của Leaflet (ĐÃ THÊM useMap)
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Components phụ (giả lập)
+import SubmitReport from "./SubmitReport";
+import SendAlert from "./SendAlert";
+
+// ***************************************
+// 🔑 THÔNG TIN MAP/TILE (Leaflet/OSM)
+// ***************************************
+const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+// ***************************************
+// 🔑 THÔNG TIN OPENROUTESERVICE API KEY (CẦN THAY THẾ)
+// ***************************************
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijk2NmVhZTVhZjhjOTQ3M2Y4YzA3MTZmNDA5ZTAwYTU4IiwiaCI6Im11cm11cjY0In0="; // <-- PHẢI THAY THẾ BẰNG KEY ORS CỦA BẠN!
+
+// ⚙️ Fix lỗi icon Leaflet và cấu hình mặc định
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
+
+// ⭐ Tọa độ trung tâm mặc định (HCM)
+const DEFAULT_CENTER = [10.77, 106.7];
+
+// 🛠️ COMPONENT MỚI: Bắt buộc Leaflet tính toán lại kích thước
+const MapResizeHandler = () => {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+  }, [map]);
+  return null;
+};
+
+// ❌ LOẠI BỎ HÀM GIẢI MÃ FLEXIBLE POLYLINE CỦA HERE
+// (ORS trả về GeoJSON, không cần hàm này nữa)
+
 const PickUpMap = ({ onTripComplete }) => {
-  // NHẬN CALLBACK
-  const tripData = {
-    trip_id: 1,
-    current_stop_index: 0,
-    stops: [
-      {
-        stop_id: 1,
-        name: "Điểm đón Nguyễn Huệ",
-        order: 1,
-        students: [
-          { id: 1, name: "Do Thien Phu", class: "5A", phoneNumber: "0123456789", checked: false },
-          { id: 2, name: "Phuong cay", class: "5A", phoneNumber: "0987654321", checked: false },
-        ],
-      },
-      {
-        stop_id: 2,
-        name: "Điểm đón Lý Tự Trọng",
-        order: 2,
-        students: [
-          { id: 3, name: "Phong Nguyen",  class: "5A",phoneNumber: "0112233445", checked: false },
-          { id: 4, name: "Khang Nguyen", class: "4A", phoneNumber: "0223344556", checked: false },
-        ],
-      },
-      {
-        stop_id: 3,
-        name: "Trường Tiểu học DEF",
-        order: 3,
-        students: [],
-      },
-    ],
-  };
+  // NHẬN DỮ LIỆU TRIP VÀ THÊM TỌA ĐỘ GIẢ LẬP
+  const tripData = useMemo(
+    () => ({
+      trip_id: 1,
+      current_stop_index: 0,
+      stops: [
+        {
+          stop_id: 1,
+          name: "Điểm đón Nguyễn Huệ",
+          order: 1,
+          lat: 10.7788, // Tọa độ giả lập
+          lng: 106.7022, // Tọa độ giả lập
+          students: [
+            { id: 1, name: "Do Thien Phu", class: "5A", phoneNumber: "0123456789", checked: false },
+            { id: 2, name: "Phuong cay", class: "5A", phoneNumber: "0987654321", checked: false },
+          ],
+        },
+        {
+          stop_id: 2,
+          name: "Điểm đón Lý Tự Trọng",
+          order: 2,
+          lat: 10.7758, // Tọa độ giả lập
+          lng: 106.6961, // Tọa độ giả lập
+          students: [
+            { id: 3, name: "Phong Nguyen", class: "5A", phoneNumber: "0112233445", checked: false },
+            { id: 4, name: "Khang Nguyen", class: "4A", phoneNumber: "0223344556", checked: false },
+          ],
+        },
+        {
+          stop_id: 3,
+          name: "Trường Tiểu học DEF",
+          order: 3,
+          lat: 10.75996438642143, // Tọa độ giả lập
+          lng: 106.68228277680376, // Tọa độ giả lập
+          students: [],
+        },
+      ],
+    }),
+    []
+  );
+
+
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const allStops = tripData.stops;
+  
+  useEffect(() => {
+    // Lấy danh sách tọa độ dừng theo định dạng ORS: [lng, lat]
+    const coords = tripData.stops.map((stop) => [stop.lng, stop.lat]); 
+
+    if (coords.length < 2) {
+        setRouteCoordinates([]);
+        return;
+    }
+
+    // ORS API call (sử dụng POST vì có nhiều điểm dừng)
+    const url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
+    
+    // Tạo body theo chuẩn ORS (coordinates: [[lng1, lat1], [lng2, lat2], ...])
+    const requestBody = {
+        coordinates: coords,
+        
+    };
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png',
+            'Content-Type': 'application/json',
+            // ORS sử dụng Authorization header (API Key)
+            'Authorization': ORS_API_KEY, 
+        },
+        body: JSON.stringify(requestBody)
+    })
+      .then((res) => {
+        if (!res.ok) {
+            // Bao gồm thông báo lỗi nếu có
+            return res.json().then(errorData => {
+                throw new Error(`HTTP error! status: ${res.status}. Message: ${errorData.error ? errorData.error.message : res.statusText}`);
+            });
+        }
+        return res.json();
+      })
+      .then((data) => {
+        // Trích xuất tọa độ từ GeoJSON (ORS response)
+        const features = data.features;
+        if (features && features.length > 0 && features[0].geometry) {
+          const rawCoords = features[0].geometry.coordinates; // [[lng, lat], [lng, lat], ...]
+          
+          // Chuyển đổi từ [lng, lat] (ORS GeoJSON) sang [lat, lng] (Leaflet Polyline)
+          const leafletCoords = rawCoords.map(c => [c[1], c[0]]); 
+          
+          setRouteCoordinates(leafletCoords);
+        } else {
+             console.error('ORS API không trả về tuyến đường hợp lệ:', data);
+             setRouteCoordinates([]);
+        }
+      })
+      .catch((err) => {
+        console.error('OpenRouteService API error:', err.message);
+        setRouteCoordinates([]);
+      });
+  }, [tripData.stops]); // Dependency array: gọi lại khi điểm dừng thay đổi
+
 
   const [currentStopIndex, setCurrentStopIndex] = useState(
     tripData.current_stop_index
@@ -69,19 +186,25 @@ const PickUpMap = ({ onTripComplete }) => {
   const [view, setView] = useState("map");
   const [openMissedDialog, setOpenMissedDialog] = useState(false);
   const [missedStudents, setMissedStudents] = useState([]);
+  const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
 
   const currentStop = tripData.stops[currentStopIndex];
   const totalStops = tripData.stops.length;
   const isLastStop = currentStopIndex === totalStops - 1;
 
+  // Cập nhật danh sách học sinh và tâm bản đồ khi điểm dừng thay đổi
   useEffect(() => {
-    setStudents(
-      tripData.stops[currentStopIndex].students.map((s) => ({
-        ...s,
-        checked: false,
-      }))
-    );
-  }, [currentStopIndex]);
+    const newStudents = tripData.stops[currentStopIndex].students.map((s) => ({
+      ...s,
+      checked: false,
+    }));
+    setStudents(newStudents);
+
+    // Cập nhật tâm bản đồ đến điểm dừng hiện tại
+    if (currentStop.lat && currentStop.lng) {
+      setMapCenter([currentStop.lat, currentStop.lng]);
+    }
+  }, [currentStopIndex, tripData.stops, currentStop.lat, currentStop.lng]);
 
   const toggleStudent = (id) => {
     setStudents((prev) =>
@@ -204,8 +327,44 @@ const PickUpMap = ({ onTripComplete }) => {
       }}
     >
       {/* MAP */}
-      <Box sx={{ flex: 2, position: "relative" }}>
-        <Map currentStop={currentStop} />
+      <Box sx={{ flex: 2, position: "relative", minHeight: "350px" }}>
+        {/* MAP CONTAINER (Leaflet + OSM) */}
+        <MapContainer
+          key={currentStopIndex} // Key giúp MapContainer reset và re-center
+          center={mapCenter}
+          zoom={15}
+          style={{ width: "100%", height: "100%", zIndex: 0 }}
+          // Bỏ thuộc tính scrollWheelZoom để bật zoom
+        >
+          {/* Nền bản đồ OSM */}
+          <TileLayer
+            attribution={OSM_ATTRIBUTION}
+            url={OSM_TILE_URL}
+          />
+
+          {/* 🛠️ Khắc phục lỗi hiển thị nền xám */}
+          <MapResizeHandler />
+          
+          {/* Vẽ Polyline cho tuyến đường bằng dữ liệu từ ORS */}
+          {routeCoordinates.length > 1 && (
+            <Polyline pathOptions={{ color: '#00bcd4', weight: 4 }} positions={routeCoordinates} />
+          )}
+          
+          {/* Marker cho TẤT CẢ điểm dừng */}
+          {tripData.stops.map((stop, idx) => (
+            stop.lat && stop.lng ? (
+              <Marker key={stop.stop_id ?? idx} position={[stop.lat, stop.lng]}>
+                <Popup>
+                  <strong>{stop.name}</strong>
+                  <br />
+                  {idx === currentStopIndex ? "Điểm hiện tại" : `Thứ tự: ${stop.order}`}
+                </Popup>
+              </Marker>
+            ) : null
+          ))}
+        </MapContainer>
+        {/* HẾT MAP CONTAINER */}
+
         <IconButton
           onClick={() => setMenuOpen(true)}
           sx={{
@@ -248,6 +407,8 @@ const PickUpMap = ({ onTripComplete }) => {
           display: "flex",
           flexDirection: "column",
           gap: 2,
+          minHeight: "50%",
+          overflowY: "auto", // Cho phép cuộn nếu danh sách dài
         }}
       >
         <Typography align="center" sx={{ fontWeight: 600, color: "#2962ff" }}>
@@ -279,7 +440,6 @@ const PickUpMap = ({ onTripComplete }) => {
                 <Typography
                   sx={{
                     fontWeight: 500,
-                    
                     color: s.checked ? "text.secondary" : "text.primary",
                   }}
                 >
@@ -357,7 +517,7 @@ const PickUpMap = ({ onTripComplete }) => {
             inset: 0,
             bgcolor: "rgba(0,0,0,0.25)",
             backdropFilter: "blur(1px)",
-            zIndex: 1500, // dưới sidebar (2000) nhưng trên nội dung
+            zIndex: 1500,
           }}
         />
       )}

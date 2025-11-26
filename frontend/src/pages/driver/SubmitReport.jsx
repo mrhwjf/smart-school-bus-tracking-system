@@ -77,7 +77,7 @@ const SubmitReport = ({ onBack }) => {
             <Typography
               fontWeight={500}
               sx={{
-                textDecoration: student.checked ? "line-through" : "none",
+                
                 color: student.checked ? "text.secondary" : "text.primary",
               }}
             >
