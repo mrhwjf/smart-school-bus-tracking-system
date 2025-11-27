@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const {hashPassword} = require('../utils/hash');
+const { hashPassword } = require('../utils/hash');
 const apiResponse = require('../utils/apiResponse');
 const createPagination = require('../utils/pagination');
 const {
@@ -98,61 +98,17 @@ async function deleteUser(userId, options = {}) {
 // Parents
 async function listParents({ filter = {}, sort, page = 0, pageSize = 10 } = {}, options = {}) {
 	const { rows, count, page: p, pageSize: s, totalPages } = await UserRepository.listParents({ filter, sort, page, pageSize }, options);
-	const items = (rows || []).map(toParentDto);
+	const items = (rows || []).map(toUserDto);
 	const data = createPagination({ items, page: p, size: s, totalElements: count, totalPages });
 	return apiResponse.success('Parents fetched successfully', data);
-}
-
-async function getParentById(parentId, options = {}) {
-	const parent = await UserRepository.findParentById(parentId, options);
-	if (!parent) return apiResponse.failure('Parent not found');
-	return apiResponse.success('Parent fetched successfully', toParentDto(parent));
-}
-
-async function createParent(data, options = {}) {
-	const created = await UserRepository.createParent({ parent_id: data.parentId, relationship: data.relationship }, options);
-	return apiResponse.success('Parent created successfully', toParentDto(created));
-}
-
-async function updateParent(parentId, changes, options = {}) {
-	const updated = await UserRepository.updateParentById(parentId, { relationship: changes.relationship }, options);
-	if (!updated) return apiResponse.failure('Parent not found');
-	return apiResponse.success('Parent updated successfully', toParentDto(updated));
-}
-
-async function deleteParent(parentId, options = {}) {
-	const deleted = await UserRepository.deleteParentById(parentId, options);
-	return apiResponse.success('Parent deleted successfully', { deleted });
 }
 
 // Drivers
 async function listDrivers({ filter = {}, sort, page = 0, pageSize = 10 } = {}, options = {}) {
 	const { rows, count, page: p, pageSize: s, totalPages } = await UserRepository.listDrivers({ filter, sort, page, pageSize }, options);
-	const items = (rows || []).map(toDriverDto);
+	const items = (rows || []).map(toUserDto);
 	const data = createPagination({ items, page: p, size: s, totalElements: count, totalPages });
 	return apiResponse.success('Drivers fetched successfully', data);
-}
-
-async function getDriverById(driverId, options = {}) {
-	const driver = await UserRepository.findDriverById(driverId, options);
-	if (!driver) return apiResponse.failure('Driver not found');
-	return apiResponse.success('Driver fetched successfully', toDriverDto(driver));
-}
-
-async function createDriver(data, options = {}) {
-	const created = await UserRepository.createDriver({ driver_id: data.driverId, license_number: data.licenseNumber, vehicle_permit: data.vehiclePermit }, options);
-	return apiResponse.success('Driver created successfully', toDriverDto(created));
-}
-
-async function updateDriver(driverId, changes, options = {}) {
-	const updated = await UserRepository.updateDriverById(driverId, { license_number: changes.licenseNumber, vehicle_permit: changes.vehiclePermit }, options);
-	if (!updated) return apiResponse.failure('Driver not found');
-	return apiResponse.success('Driver updated successfully', toDriverDto(updated));
-}
-
-async function deleteDriver(driverId, options = {}) {
-	const deleted = await UserRepository.deleteDriverById(driverId, options);
-	return apiResponse.success('Driver deleted successfully', { deleted });
 }
 
 module.exports = {
@@ -161,7 +117,7 @@ module.exports = {
 	// Users
 	listUsers, getUserById, createUser, updateUser, deleteUser,
 	// Parents
-	listParents, getParentById, createParent, updateParent, deleteParent,
+	listParents,
 	// Drivers
-	listDrivers, getDriverById, createDriver, updateDriver, deleteDriver,
+	listDrivers
 };
