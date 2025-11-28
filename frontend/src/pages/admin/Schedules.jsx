@@ -1,4 +1,4 @@
-import { Paper, Chip, Stack, Typography, Button, Box, Collapse, IconButton } from '@mui/material'
+import { Paper, Chip, Stack, Typography, Button, Box, Collapse, IconButton, Toolbar } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -27,7 +27,7 @@ export default function Schedules() {
     setLoading(true)
     try {
       const data = await AdminService.listTrips()
-      setRows(data)
+      setRows(Array.isArray(data) ? data : [])
     } catch {
       notify.error(t('notify.error'))
     } finally {
@@ -137,11 +137,8 @@ export default function Schedules() {
       renderCell: (params) => (
         <Typography
           variant="body2"
-          sx={{
-            fontWeight: 500,
-            whiteSpace: 'normal', // xuống dòng nếu tên dài
-            wordBreak: 'break-word',
-          }}
+          className="schedule-route-cell"
+          sx={{ fontWeight: 500 }}
         >
           {params.row?.route?.name || '—'}
         </Typography>
@@ -163,14 +160,14 @@ export default function Schedules() {
       headerName: t('startTime'),
       flex: 1,
       minWidth: 160,
-      valueGetter: (value) => formatDateTime(value)
+      valueFormatter: (params) => formatDateTime(params?.value)
     },
     {
       field: 'end_time',
       headerName: t('endTime'),
       flex: 1,
       minWidth: 160,
-      valueGetter: (value) => formatDateTime(value)
+      valueFormatter: (params) => formatDateTime(params?.value)
     },
     {
       field: 'status',
@@ -181,46 +178,38 @@ export default function Schedules() {
     {
       field: 'actions',
       headerName: t('actions'),
-      width: 180,
+      width: 160,
       sortable: false,
       filterable: false,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => (
-        <Stack direction="row" spacing={0.5} alignItems="center">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Button
             size="small"
             variant="outlined"
-            startIcon={expandedIds.has(params.row.trip_id) ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-            onClick={(e) => {
-              e.stopPropagation()
-              toggleExpand(params.row.trip_id)
-            }}
-            sx={{ minWidth: 'auto', px: 1, fontSize: '0.75rem' }}
+            startIcon={expandedIds.has(params.row.trip_id) ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+            onClick={(e) => { e.stopPropagation(); toggleExpand(params.row.trip_id) }}
+            sx={{ minWidth: 36, height: 30, px: 0.5, fontSize: '0.72rem', lineHeight: 1 }}
           >
             Chi tiết
           </Button>
           <IconButton
             size="small"
-            onClick={(e) => {
-              e.stopPropagation()
-              onEdit(params.row)
-            }}
-            sx={{ color: 'primary.main' }}
+            onClick={(e) => { e.stopPropagation(); onEdit(params.row) }}
+            sx={{ color: 'primary.main', p: 0.5, borderRadius: '50%' }}
           >
             <EditIcon fontSize="small" />
           </IconButton>
           <IconButton
             size="small"
             color="error"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(params.row)
-            }}
+            onClick={(e) => { e.stopPropagation(); onDelete(params.row) }}
+            sx={{ p: 0.5, borderRadius: '50%' }}
           >
             <DeleteIcon fontSize="small" />
           </IconButton>
-        </Stack>
+        </Box>
       )
     }
   ], [t, expandedIds])
@@ -287,7 +276,7 @@ export default function Schedules() {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           {t('schedules')}
@@ -302,18 +291,14 @@ export default function Schedules() {
         </Button>
       </Stack>
 
-      <Paper
-        sx={{
-          width: '100%',
-          overflow: 'hidden',
-          mx: 'auto', // căn giữa
-        }}
-      >
+      <Paper sx={{ width: '100%' }}>
+        <Toolbar variant="dense" />
         <DataGrid
           rows={rows}
           columns={columns}
           getRowId={(r) => r.trip_id}
           loading={loading}
+          rowHeight={56}
           pagination
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{
@@ -322,18 +307,18 @@ export default function Schedules() {
             },
           }}
           disableRowSelectionOnClick
-          autoHeight
           sx={{
             width: '100%',
             border: 'none',
-            '& .MuiDataGrid-main': {
-              width: '100%',
-            },
+            '& .MuiDataGrid-main': { width: '100%' },
             '& .MuiDataGrid-cell': {
-              py: 1.5,
-              alignItems: 'flex-start', // cho phép nội dung xuống dòng
-              whiteSpace: 'normal', // xuống dòng khi dài
-              wordBreak: 'break-word', // cắt chữ khi quá dài
+              py: 1,
+              alignItems: 'center',
+            },
+            '& .schedule-route-cell': {
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              alignItems: 'flex-start',
             },
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: 'action.hover',

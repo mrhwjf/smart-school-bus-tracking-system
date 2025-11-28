@@ -1,0 +1,191 @@
+/* Root and design tokens */
+.login-root {
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(180deg, #f6fbff 0%, #eef6ff 60%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+:root {
+  --primary: #1e88e5;
+  --accent: #a6e79a;
+  --card-bg: rgba(255,255,255,0.96);
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+.login-root::before {
+  content: '';
+  position: absolute;
+  left: -10%;
+  top: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle at 30% 30%, rgba(21,101,192,0.08), rgba(21,101,192,0.02) 40%);
+  filter: blur(30px);
+  transform: rotate(-10deg);
+}
+
+.login-root::after {
+  content: '';
+  position: absolute;
+  right: -8%;
+  bottom: -6%;
+  width: 48%;
+  height: 48%;
+  background: radial-gradient(circle at 70% 70%, rgba(46,125,50,0.06), rgba(46,125,50,0.01) 45%);
+  filter: blur(36px);
+}
+
+.login-col {
+  width: 100%;
+  max-width: 520px;
+}
+
+.login-card {
+  border-radius: 12px;
+  box-shadow: 0 6px 30px rgba(0,0,0,0.08);
+  background-color: var(--card-bg);
+  -webkit-backdrop-filter: saturate(120%) blur(6px);
+  backdrop-filter: saturate(120%) blur(6px);
+  padding: 28px 28px 20px 28px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.login-logo {
+  width: 96px;
+  height: 96px;
+  display: inline-block;
+}
+
+.login-header .ant-typography {
+  line-height: 1.1;
+}
+.login-header .ant-typography h4,
+.login-header .ant-typography[role="heading"] {
+  font-size: 20px;
+  font-weight: 600;
+}
+.login-header .ant-typography + .ant-typography {
+  font-size: 14px;
+}
+
+.login-tabs {
+  margin-top: 18px;
+}
+
+.login-tabs .ant-tabs-tab {
+  font-size: 15px;
+  padding: 8px 14px;
+}
+.login-tabs img {
+  width: 22px !important;
+  height: 22px !important;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.login-tabs .ant-tabs-ink-bar {
+  background: var(--accent) !important;
+}
+
+.login-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+.login-card .ant-btn-primary {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  height: 40px;
+  font-size: 16px;
+  padding: 6px 14px;
+}
+.login-card .ant-btn-primary:hover,
+.login-card .ant-btn-primary:focus {
+  background-color: #1669b8 !important;
+  border-color: #1669b8 !important;
+}
+
+.login-card .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.login-form-wrap {
+  margin-top: 12px;
+}
+
+.login-card .ant-input,
+.login-card .ant-input-affix-wrapper {
+  font-size: 15px;
+  min-height: 40px;
+  padding: 4px 12px;
+}
+
+/* [FIX] Sửa lỗi icon bị lệch và nút password không bấm được */
+.login-card .ant-input-affix-wrapper .ant-input-prefix,
+.login-card .ant-input-affix-wrapper .ant-input-suffix {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Đã xóa height: 100% gây lỗi */
+  font-size: 16px; 
+  color: var(--primary);
+}
+
+/* Căn chỉnh khoảng cách cho đẹp hơn */
+.login-card .ant-input-affix-wrapper .ant-input-prefix {
+  margin-right: 8px;
+}
+.login-card .ant-input-affix-wrapper .ant-input-suffix {
+  margin-left: 8px;
+}
+
+.login-card .ant-input-affix-wrapper .anticon {
+  display: flex;
+  align-items: center;
+}
+
+.login-card .ant-form-item-label > label {
+  font-size: 14px;
+}
+
+.login-footer {
+  width: 100%;
+  margin-top: 15px;
+  font-size: 13px;
+}
+
+.fade-content {
+  transition: opacity 220ms cubic-bezier(.2,.9,.2,1), transform 220ms cubic-bezier(.2,.9,.2,1);
+  opacity: 1;
+  transform: translateY(0);
+}
+.fade-content.hidden {
+  opacity: 0;
+  transform: translateY(6px);
+  visibility: hidden; 
+  position: absolute;   
+}
+
+.login-card .ant-input-affix-wrapper .ant-input-suffix .anticon-eye,
+.login-card .ant-input-affix-wrapper .ant-input-suffix .anticon-eye-invisible {
+  cursor: pointer !important;    
+  pointer-events: auto !important; 
+  position: relative;            
+  z-index: 10;                   
+}
+
+.login-card .ant-input-affix-wrapper .ant-input-suffix {
+  pointer-events: auto;
+}

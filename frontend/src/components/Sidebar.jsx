@@ -1,18 +1,18 @@
-import { List, ListItemButton, ListItemIcon, ListItemText, Box, Toolbar, Tooltip, Divider, IconButton, Typography } from '@mui/material'
+import { List, ListItemButton, ListItemIcon, ListItemText, Box, Toolbar, Tooltip, Divider, IconButton } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import SchoolIcon from '@mui/icons-material/School'
 import RouteIcon from '@mui/icons-material/AltRoute'
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus'
 import PeopleIcon from '@mui/icons-material/People'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
 import MessageIcon from '@mui/icons-material/Message'
 import MyLocationIcon from '@mui/icons-material/MyLocation'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import MenuIcon from '@mui/icons-material/Apps'
 import { useEffect, useRef, useState } from 'react'
+import LogoutIcon from '@mui/icons-material/Logout'
 
 const items = [
   { to: '/', icon: <DashboardIcon />, label: 'Tổng quan' },
@@ -21,13 +21,13 @@ const items = [
   { to: '/buses', icon: <DirectionsBusIcon />, label: 'Xe buýt' },
   { to: '/routes', icon: <RouteIcon />, label: 'Tuyến đường' },
   { to: '/schedules', icon: <CalendarMonthIcon />, label: 'Lịch trình' },
-  { to: '/assignments', icon: <CompareArrowsIcon />, label: 'Phân công' },
   { to: '/messages', icon: <MessageIcon />, label: 'Tin nhắn' },
   { to: '/tracking', icon: <MyLocationIcon />, label: 'Theo dõi' },
 ]
 
 export default function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sb_collapsed') === '1')
   const [width, setWidth] = useState(() => {
     const w = Number(localStorage.getItem('sb_width') || 260)
@@ -103,6 +103,33 @@ export default function Sidebar() {
           )
         })}
       </List>
+      {/* Logout button at bottom */}
+      <Box sx={{ px: 1, pb: 0.5 }}>
+        <ListItemButton
+          onClick={() => {
+            try {
+              localStorage.removeItem('authToken')
+              localStorage.removeItem('authUser')
+              window.dispatchEvent(new Event('auth:changed'))
+            } catch (err) {
+              console.error('Failed to clear auth data', err)
+            }
+            navigate('/login')
+          }}
+          sx={{
+            gap: 1,
+            borderRadius: 1,
+            my: 0.5,
+            bgcolor: 'error.main',
+            color: 'common.white',
+            '&:hover': { bgcolor: 'error.dark' },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}><LogoutIcon /></ListItemIcon>
+          {!collapsed && <ListItemText primary="Đăng xuất" />}
+        </ListItemButton>
+      </Box>
+
       {/* Collapse toggle */}
   <Box sx={{ position: 'relative', bottom: 8, left: 0, right: 0, px: 1, pb: 1 }}>
         <Divider sx={{ mb: 1 }} />

@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import AdminLayout from '../layouts/AdminLayout'
+import Login from '../pages/auth/Login'
 import Dashboard from '../pages/admin/Dashboard'
 import Students from '../pages/admin/Students'
 import Drivers from '../pages/admin/Drivers'
@@ -28,6 +29,8 @@ export const router = createBrowserRouter([
       { path: 'tracking', element: <Tracking /> },
     ],
   },
+  { path: '/login', element: <Login /> },
+  { path: '/error', element: <ErrorPage /> },
 ])
 
 export default router

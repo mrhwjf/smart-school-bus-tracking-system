@@ -1,9 +1,10 @@
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, GeoJSON } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useEffect, useRef, useState } from 'react'
 import { AdminService, Realtime } from '../../api/services'
+import { getDirections } from '../../api/ors'
 import { Paper, Typography, Box, Chip } from '@mui/material'
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -15,6 +16,12 @@ const BusIcon = L.divIcon({
   html: renderToStaticMarkup(<DirectionsBusIcon sx={{ color: '#1976d2' }} />),
   className: '',
   iconSize: [24, 24],
+})
+
+const SelectedBusIcon = L.divIcon({
+  html: renderToStaticMarkup(<DirectionsBusIcon sx={{ color: '#d32f2f', fontSize: 28 }} />),
+  className: '',
+  iconSize: [30, 30],
 })
 
 const createClusterIcon = (cluster) => {
@@ -100,6 +107,39 @@ export default function Tracking() {
     .filter((s) => typeof s.latitude === 'number' && typeof s.longitude === 'number')
     .map((s) => [s.latitude, s.longitude])
 
+  const [routeGeojson, setRouteGeojson] = useState(null)
+
+  // Fetch ORS directions for the selected trip stops (if available)
+  useEffect(() => {
+    let mounted = true
+    setRouteGeojson(null)
+    const stops = (selectedTrip?.stops || []).filter((s) => typeof s.latitude === 'number' && typeof s.longitude === 'number')
+    if (!stops || stops.length < 2) return
+
+    ;(async () => {
+      try {
+        // ORS expects [lng, lat]
+        const coords = stops.map((s) => [s.longitude, s.latitude])
+        const geo = await getDirections(coords, 'driving-car', { instructions: false })
+        if (mounted && geo) setRouteGeojson(geo)
+      } catch (err) {
+        console.error('ORS directions error:', err)
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [selectedTrip])
+
+  // Prepare faint polylines for other trips to give context
+  const otherTripPolylines = trips
+    .filter((t) => t.trip_id !== selectedTrip?.trip_id)
+    .map((t) => {
+      const pts = (t.stops || []).filter((s) => typeof s.latitude === 'number' && typeof s.longitude === 'number').map((s) => [s.latitude, s.longitude])
+      return { trip: t, positions: pts }
+    })
+
   useEffect(() => {
     if (mapRef.current && selectedBus?.latitude && selectedBus?.longitude) {
       mapRef.current.setView([selectedBus.latitude, selectedBus.longitude], 14, { animate: true })
@@ -175,14 +215,33 @@ export default function Tracking() {
             {selectedTrip && <StatusChip code={selectedTrip.status} />}
             {nextStop && <Chip size="small" label={`Điểm tiếp theo: ${nextStop.name}`} />}
           </Box>
-          <MapContainer center={center} zoom={12} style={{ height: 480 }} whenCreated={(map) => (mapRef.current = map)}>
+          <Box sx={{ position: 'relative' }}>
+            <MapContainer center={center} zoom={12} style={{ height: 480 }} whenCreated={(map) => (mapRef.current = map)}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
-            {polyline.length > 1 && (
+            {/* render other trips faintly for context */}
+            {otherTripPolylines.map((r) =>
+              r.positions.length > 1 ? (
+                <Polyline key={r.trip.trip_id} positions={r.positions} pathOptions={{ color: '#999', weight: 2, opacity: 0.35 }} />
+              ) : null,
+            )}
+
+            {(polyline.length > 1 || routeGeojson) && (
               <>
-                <Polyline positions={polyline} pathOptions={{ color: '#2e7d32', weight: 4, opacity: 0.8 }} />
+                {routeGeojson ? (
+                  <GeoJSON data={routeGeojson} style={{ color: '#ff6600', weight: 6, opacity: 0.95 }} />
+                ) : (
+                  <Polyline positions={polyline} pathOptions={{ color: '#2e7d32', weight: 6, opacity: 0.95 }} />
+                )}
                 {(selectedTrip?.stops || []).map((s, i) => (
-                  <CircleMarker key={s.stop_id} center={[s.latitude, s.longitude]} radius={5} pathOptions={{ color: i === 0 ? '#0277bd' : '#2e7d32', fillOpacity: 0.9 }} />
+                  <CircleMarker key={s.stop_id} center={[s.latitude, s.longitude]} radius={6} pathOptions={{ color: i === 0 ? '#0277bd' : '#2e7d32', fillOpacity: 0.95 }} />
                 ))}
+                {/* start / end markers */}
+                {polyline.length > 0 && (
+                  <>
+                    <CircleMarker center={polyline[0]} radius={8} pathOptions={{ color: '#0277bd', fillColor: '#0277bd', fillOpacity: 1 }} />
+                    <CircleMarker center={polyline[polyline.length - 1]} radius={8} pathOptions={{ color: '#d32f2f', fillColor: '#d32f2f', fillOpacity: 1 }} />
+                  </>
+                )}
               </>
             )}
             <MarkerClusterGroup
@@ -200,7 +259,7 @@ export default function Tracking() {
               {buses
                 .filter((b) => b.latitude && b.longitude)
                 .map((b) => (
-                  <Marker key={b.bus_id} position={[b.latitude, b.longitude]} icon={BusIcon} eventHandlers={{ click: () => setSelectedId(b.bus_id) }}>
+                  <Marker key={b.bus_id} position={[b.latitude, b.longitude]} icon={b.bus_id === selectedBus?.bus_id ? SelectedBusIcon : BusIcon} eventHandlers={{ click: () => setSelectedId(b.bus_id) }}>
                     <Popup>
                       <div>
                         <strong>{b.plate_number}</strong>
@@ -214,7 +273,19 @@ export default function Tracking() {
                   </Marker>
                 ))}
             </MarkerClusterGroup>
-          </MapContainer>
+            </MapContainer>
+            <Box sx={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.95)', borderRadius: 1, p: 1, boxShadow: 1, zIndex: 500 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700 }}>Ghi chú</Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
+                <Box sx={{ width: 18, height: 6, background: '#ff6600' }} />
+                <Typography variant="caption">Tuyến chọn</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
+                <Box sx={{ width: 18, height: 6, background: '#999' }} />
+                <Typography variant="caption">Tuyến khác (mờ)</Typography>
+              </Box>
+            </Box>
+          </Box>
         </Paper>
       </Box>
     </>
