@@ -69,8 +69,20 @@ export default function Tracking() {
   const mapRef = useRef(null)
   useEffect(() => {
     let mounted = true
-    AdminService.listBusLocations().then((d) => mounted && setBuses(d))
-    AdminService.listTrips().then((d) => mounted && setTrips(d))
+    // Load trips first to know which buses are valid from DB
+    AdminService.listTrips().then((tripData) => {
+      if (!mounted) return
+      const tripsArr = Array.isArray(tripData) ? tripData : []
+      setTrips(tripsArr)
+      const validBusIds = new Set(tripsArr.map((t) => t.bus?.bus_id).filter(Boolean))
+      // Load bus locations and keep only buses present in trips
+      AdminService.listBusLocations().then((locs) => {
+        if (!mounted) return
+        const arr = Array.isArray(locs) ? locs : []
+        const filtered = arr.filter((b) => validBusIds.has(b.bus_id))
+        setBuses(filtered)
+      })
+    })
 
     // Batch realtime updates every ~200ms to reduce re-renders
     const queueRef = { map: new Map() }
@@ -90,8 +102,12 @@ export default function Tracking() {
     }
     const interval = setInterval(flush, 200)
 
+    // Subscribe to realtime only when payload includes recorded_at (backend source). Ignore mock payloads.
     const unsub = Realtime.subscribe((payload) => {
-      payload.forEach((p) => queueRef.map.set(p.bus_id, p))
+      const ids = new Set((trips || []).map((t) => t.bus?.bus_id).filter(Boolean))
+      payload.forEach((p) => {
+        if (ids.has(p.bus_id) && p.recorded_at) queueRef.map.set(p.bus_id, p)
+      })
     })
 
     return () => {

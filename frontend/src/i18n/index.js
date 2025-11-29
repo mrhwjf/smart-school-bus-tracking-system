@@ -5,6 +5,23 @@ const resources = {
   vi: {
     translation: {
   appTitle: 'Smart-School-Bus',
+      welcomeTitle: 'Chào mừng đến SSB',
+      welcomeSubtitle: 'Hệ thống quản lý và giám sát xe đưa đón học sinh',
+      loginTabs: { admin: 'Admin', driver: 'Tài xế', parent: 'Phụ huynh' },
+      login: {
+        identifier_driver_placeholder: 'Số điện thoại hoặc ID tài xế',
+        identifier_placeholder: 'Số điện thoại hoặc email',
+        password: 'Mật khẩu',
+        login_admin: 'Đăng nhập với tư cách Admin',
+        login_driver: 'Đăng nhập cho Tài xế',
+        login_parent: 'Đăng nhập cho Phụ huynh',
+        version: 'Phiên bản SSB 1.0',
+        success: 'Đăng nhập thành công',
+        failed: 'Đăng nhập thất bại',
+        error: 'Lỗi đăng nhập',
+        required_identifier: 'Vui lòng nhập thông tin!',
+        required_password: 'Vui lòng nhập mật khẩu!'
+      },
       dashboard: 'Tổng quan',
       students: 'Học sinh',
       drivers: 'Tài xế',
@@ -92,11 +109,30 @@ const resources = {
         buses: 'Xe buýt',
         routes: 'Tuyến đường',
       },
+      accountInfo: 'Thông tin tài khoản',
+      logout: 'Đăng xuất',
     },
   },
   en: {
     translation: {
   appTitle: 'Smart-School-Bus',
+      welcomeTitle: 'Welcome to SSB',
+      welcomeSubtitle: 'Student pickup and school-bus management system',
+      loginTabs: { admin: 'Admin', driver: 'Driver', parent: 'Parent' },
+      login: {
+        identifier_driver_placeholder: 'Phone number or driver ID',
+        identifier_placeholder: 'Phone number or email',
+        password: 'Password',
+        login_admin: 'Login as Admin',
+        login_driver: 'Driver Login',
+        login_parent: 'Parent Login',
+        version: 'SSB version 1.0',
+        success: 'Login successful',
+        failed: 'Login failed',
+        error: 'Login error',
+        required_identifier: 'Please enter identifier!',
+        required_password: 'Please enter password!'
+      },
       dashboard: 'Dashboard',
       students: 'Students',
       drivers: 'Drivers',
@@ -184,13 +220,17 @@ const resources = {
         buses: 'Buses',
         routes: 'Routes',
       },
+      accountInfo: 'Account info',
+      logout: 'Logout',
     },
   },
 }
 
+const persisted = typeof window !== 'undefined' ? localStorage.getItem('appLang') : null
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: 'vi',
+  lng: persisted || 'vi',
   fallbackLng: 'vi',
   interpolation: { escapeValue: false },
 })

@@ -9,24 +9,27 @@ import driverPng from '../../assets/driver.png'
 import familyPng from '../../assets/family.png'
 import './Login.css'
 import { AdminService } from '../../api/services'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
+import { useTranslation } from 'react-i18next'
 
 const { Title, Text } = Typography
 
 function RoleForm({ role, onSubmit }) {
   const [form] = Form.useForm()
+  const { t } = useTranslation()
   const handleFinish = (vals) => onSubmit(role, vals)
 
-  const placeholder = role === 'driver' ? 'Số điện thoại hoặc ID tài xế' : 'Số điện thoại hoặc email'
+  const placeholder = role === 'driver' ? t('login.identifier_driver_placeholder') : t('login.identifier_placeholder')
   const Icon = role === 'driver' ? CarOutlined : role === 'parent' ? HomeOutlined : UserOutlined
-  const submitLabel = role === 'admin' ? 'Đăng nhập với tư cách Admin' : role === 'driver' ? 'Đăng nhập cho Tài xế' : 'Đăng nhập cho Phụ huynh'
+  const submitLabel = role === 'admin' ? t('login.login_admin') : role === 'driver' ? t('login.login_driver') : t('login.login_parent')
 
   return (
     <Form form={form} name={role} layout="vertical" onFinish={handleFinish}>
-      <Form.Item name="identifier" label={placeholder} rules={[{ required: true, message: 'Vui lòng nhập thông tin!' }] }>
+      <Form.Item name="identifier" label={placeholder} rules={[{ required: true, message: t('login.required_identifier') }] }>
         {/* [FIX] Thêm autoFocus để tự động focus khi chuyển tab */}
         <Input prefix={<Icon />} autoFocus />
       </Form.Item>
-      <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }] }>
+      <Form.Item name="password" label={t('login.password')} rules={[{ required: true, message: t('login.required_password') }] }>
         <Input.Password prefix={<LockOutlined />} />
       </Form.Item>
       <Form.Item>
@@ -41,20 +44,21 @@ export default function Login() {
   const [displayedRole, setDisplayedRole] = useState('admin')
   const [hidden, setHidden] = useState(false)
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const onSubmit = (r, values) => {
     ;(async () => {
       try {
         const res = await AdminService.login(r, values)
         if (!res || !res.success) {
-          message.error(res?.message || 'Đăng nhập thất bại')
+          message.error(res?.message || t('login.failed'))
           return
         }
         localStorage.setItem('authToken', res.token)
         localStorage.setItem('authUser', JSON.stringify({ role: r, user: res.user }))
         // Notify layout to re-check auth state when already at '/'
         window.dispatchEvent(new Event('auth:changed'))
-        message.success('Đăng nhập thành công')
+        message.success(t('login.success'))
         
         if (r === 'admin') {
           navigate('/')
@@ -64,23 +68,26 @@ export default function Login() {
         }
       } catch (err) {
         console.error('login error', err)
-        message.error('Lỗi đăng nhập')
+          message.error(t('login.error'))
       }
     })()
   }
 
   return (
     <Row justify="center" align="middle" className="login-root">
+      <div className="global-lang-switcher">
+        <LanguageSwitcher />
+      </div>
       <Col className="login-col">
         <Card bordered={false} className="login-card">
           <div className="login-header">
             <img src={logo} alt="SSB Logo" className="login-logo" />
-            <Title level={4} style={{ margin: '8px 0 0' }}>Chào mừng đến SSB</Title>
-            <Text type="secondary">Hệ thống quản lý và giám sát xe đưa đón học sinh</Text>
+            <Title level={4} style={{ margin: '8px 0 0' }}>{t('welcomeTitle')}</Title>
+            <Text type="secondary">{t('welcomeSubtitle')}</Text>
           </div>
 
           <div style={{ marginTop: 18 }}>
-            <Tabs
+              <Tabs
               activeKey={role}
               onChange={(k) => {
                 if (k === role) return
@@ -94,9 +101,9 @@ export default function Login() {
               centered
               className="login-tabs"
             >
-              <Tabs.TabPane tab={<span><img src={adminPng} alt="admin" style={{ width: 20, height: 20, marginRight: 8, verticalAlign: 'middle' }} /> Admin</span>} key="admin" />
-              <Tabs.TabPane tab={<span><img src={driverPng} alt="driver" style={{ width: 20, height: 20, marginRight: 8, verticalAlign: 'middle' }} /> Tài xế</span>} key="driver" />
-              <Tabs.TabPane tab={<span><img src={familyPng} alt="family" style={{ width: 20, height: 20, marginRight: 8, verticalAlign: 'middle' }} /> Phụ huynh</span>} key="parent" />
+              <Tabs.TabPane tab={<span><img src={adminPng} alt="admin" style={{ width: 20, height: 20, marginRight: 8, verticalAlign: 'middle' }} /> {t('loginTabs.admin')}</span>} key="admin" />
+              <Tabs.TabPane tab={<span><img src={driverPng} alt="driver" style={{ width: 20, height: 20, marginRight: 8, verticalAlign: 'middle' }} /> {t('loginTabs.driver')}</span>} key="driver" />
+              <Tabs.TabPane tab={<span><img src={familyPng} alt="family" style={{ width: 20, height: 20, marginRight: 8, verticalAlign: 'middle' }} /> {t('loginTabs.parent')}</span>} key="parent" />
             </Tabs>
 
             <div className={`login-form-wrap fade-content ${hidden ? 'hidden' : ''}`}>
@@ -106,7 +113,7 @@ export default function Login() {
           </div>
 
           <Space direction="vertical" className="login-footer">
-            <Text type="secondary" style={{ fontSize: 12 }}>Phiên bản SSB 1.0</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t('login.version')}</Text>
           </Space>
         </Card>
       </Col>

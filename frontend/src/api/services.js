@@ -15,19 +15,27 @@
  */
 
 import api, { authApi } from './client'
-import {
-  users,
-  drivers,
-  students,
-  buses,
-  routes,
-  stops,
-  trips,
-  trip_stops,
-  trip_passengers,
-  messages,
-  navigation_logs,
-} from './mockData'
+// Mock data is only used in DEV fallback paths. Avoid importing in production builds.
+let users, drivers, students, buses, routes, stops, trips, trip_stops, trip_passengers, messages, navigation_logs
+try {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    ({
+      users,
+      drivers,
+      students,
+      buses,
+      routes,
+      stops,
+      trips,
+      trip_stops,
+      trip_passengers,
+      messages,
+      navigation_logs,
+    } = await import('./mockData'))
+  }
+} catch {
+  // noop in production builds where mockData isn't available
+}
 
 // ==============================================
 // UTILITY FUNCTIONS
@@ -50,10 +58,15 @@ const safeApi = async (fn, fallback) => {
     // Thử gọi API thực
     return await fn()
   } catch (err) {
-    // Nếu API fail, log warning và dùng fallback
-    console.warn('[API FALLBACK]', err?.message || err)
-    await delay() // Simulate network delay
-    return typeof fallback === 'function' ? fallback() : fallback
+    // Nếu API fail: chỉ fallback khi đang ở DEV. PROD sẽ throw để UI thấy lỗi thay vì dữ liệu giả.
+    const isDev = (typeof import.meta !== 'undefined' && import.meta.env?.DEV) || (typeof window !== 'undefined' && window?.SSB_DEV_FALLBACK === true)
+    if (isDev) {
+      console.warn('[API FALLBACK: DEV]', err?.message || err)
+      await delay() // Simulate network delay
+      return typeof fallback === 'function' ? fallback() : fallback
+    }
+    // Production: bubble up the error
+    throw err
   }
 }
 
@@ -749,35 +762,39 @@ export const AdminService = {
          * - startTime → start_time
          * - shift → status label
          */
-        return items.map((t) => ({
-          trip_id: t.trip_id ?? t.tripId ?? t.id ?? t.schedule_id ?? t.scheduleId,
-          start_time: t.start_time ?? t.startTime ?? t.plannedStartTime ?? t.actualStartTime,
-          end_time: t.end_time ?? t.endTime ?? t.plannedEndTime ?? t.actualEndTime,
-          status: t.status ?? t.tripStatus ?? (t.shift ? 'SCHEDULED' : 'SCHEDULED'),
-          ...t,
-          
-          // Join với related entities (nếu backend không include)
-          route: t.route || routes.find((r) => (r.route_id ?? r.routeId) === (t.route_id ?? t.routeId)),
-          bus: t.bus || buses.find((b) => (b.bus_id ?? b.busId) === (t.bus_id ?? t.busId)),
-          driver: t.driver || users.find((u) => (u.user_id ?? u.userId) === (t.driver_id ?? t.driverId)),
-          
-          // Stops: sort theo stop_order
-          stops: Array.isArray(t.stops) && t.stops.length
-            ? [...t.stops].sort((a, b) => (a.stop_order ?? a.seq_index ?? a.seqIndex) - (b.stop_order ?? b.seq_index ?? b.seqIndex))
-            : trip_stops
-                .filter((ts) => (ts.trip_id ?? ts.tripId) === (t.trip_id ?? t.tripId))
-                .sort((a, b) => (a.stop_order ?? a.seq_index) - (b.stop_order ?? b.seq_index))
-                .map((ts) => stops.find((s) => (s.stop_id ?? s.stopId) === (ts.stop_id ?? ts.stopId))),
-          
-          // Passengers
-          passengers: Array.isArray(t.passengers) && t.passengers.length
-            ? t.passengers
-            : trip_passengers
-                .filter((tp) => (tp.trip_id ?? tp.tripId) === (t.trip_id ?? t.tripId))
-                .map((tp) => students.find((s) => (s.student_id ?? s.studentId) === (tp.student_id ?? tp.studentId))),
-          
-          shift_label: t.shift || null, // MORNING|AFTERNOON
-        }))
+        // Pre-fetch stops and routes to enrich trips if backend doesn't include them
+        const [routesRes, stopsRes] = await Promise.all([
+          api.get('/routes').catch(() => ({ data: [] })),
+          api.get('/stops').catch(() => ({ data: [] })),
+        ])
+        const routeData = Array.isArray(routesRes.data) ? routesRes.data : (Array.isArray(routesRes.data?.items) ? routesRes.data.items : [])
+        const stopData = Array.isArray(stopsRes.data) ? stopsRes.data : (Array.isArray(stopsRes.data?.items) ? stopsRes.data.items : [])
+
+        return items.map((t) => {
+          const tripId = t.trip_id ?? t.tripId ?? t.id ?? t.schedule_id ?? t.scheduleId
+          const routeId = t.route_id ?? t.routeId
+          const busId = t.bus_id ?? t.busId
+          const driverId = t.driver_id ?? t.driverId
+          const routeObj = t.route || routeData.find((r) => (r.route_id ?? r.routeId) === routeId)
+          const stopsForRoute = Array.isArray(t.stops) && t.stops.length
+            ? [...t.stops]
+            : stopData.filter((s) => (s.route_id ?? s.routeId) === routeId)
+          return {
+            trip_id: tripId,
+            start_time: t.start_time ?? t.startTime ?? t.plannedStartTime ?? t.actualStartTime,
+            end_time: t.end_time ?? t.endTime ?? t.plannedEndTime ?? t.actualEndTime,
+            status: t.status ?? t.tripStatus ?? (t.shift ? 'SCHEDULED' : 'SCHEDULED'),
+            ...t,
+            route: routeObj || null,
+            bus: t.bus ?? (typeof busId !== 'undefined' ? { bus_id: busId } : null),
+            driver: t.driver ?? (typeof driverId !== 'undefined' ? { user_id: driverId } : null),
+            stops: stopsForRoute
+              .slice()
+              .sort((a, b) => (a.stop_order ?? a.seq_index ?? a.seqIndex ?? 0) - (b.stop_order ?? b.seq_index ?? b.seqIndex ?? 0)),
+            passengers: Array.isArray(t.passengers) ? t.passengers : [],
+            shift_label: t.shift || null,
+          }
+        })
       },
       // Fallback: join mock data
       () =>
@@ -1009,48 +1026,40 @@ export const AdminService = {
    * @returns {Promise<Array<BusLocation>>} - Buses với lat/lng
    */
   async listBusLocations() {
-    return safeApi(
-      async () => {
-        const res = await api.get('/navigation-logs')
-        return res.data
-      },
-      // Fallback: join buses với navigation_logs
-      () => {
-        const latest = new Map()
-        navigation_logs.forEach((n) => {
-          latest.set(n.bus_id, n)
-        })
-        // Only include buses that have trips in DB/mock to avoid showing extra mock buses
-        const busIdsWithTrips = new Set(trips.map((t) => t.bus_id))
-        return buses.filter((b) => busIdsWithTrips.has(b.bus_id)).map((b) => {
-          const log = latest.get(b.bus_id)
-          // If no log, seed position from first stop of its route/trip
-          if (!log) {
-            const trip = trips.find((t) => t.bus_id === b.bus_id)
-            const firstStopId = trip_stops.filter((ts) => ts.trip_id === trip?.trip_id).sort((a, b) => (a.stop_order ?? a.seq_index) - (b.stop_order ?? b.seq_index))[0]?.stop_id
-            const stop = stops.find((s) => s.stop_id === firstStopId)
-            return {
-              bus_id: b.bus_id,
-              plate_number: b.plate_number,
-              status: b.status,
-              capacity: b.capacity,
-              latitude: stop?.latitude ?? null,
-              longitude: stop?.longitude ?? null,
-              recorded_at: null,
-            }
-          }
-          return {
-            bus_id: b.bus_id,
-            plate_number: b.plate_number,
-            status: b.status,
-            capacity: b.capacity,
-            latitude: log.latitude,
-            longitude: log.longitude,
-            recorded_at: log.recorded_at,
-          }
-        })
-      },
-    )
+    try {
+      const res = await api.get('/navigation-logs')
+      const data = res.data
+      const arr = Array.isArray(data)
+        ? data
+        : (data && typeof data === 'object')
+          ? (Array.isArray(data.items) ? data.items : Array.isArray(data.rows) ? data.rows : [])
+          : []
+      return arr.map((n) => ({
+        bus_id: n.bus_id ?? n.busId,
+        plate_number: n.plate_number ?? n.plateNumber ?? null,
+        status: n.status ?? null,
+        capacity: n.capacity ?? null,
+        latitude: n.latitude,
+        longitude: n.longitude,
+        recorded_at: n.recorded_at ?? n.recordedAt ?? null,
+      }))
+    } catch (err) {
+      // If navigation logs endpoint does not exist (404), derive list from /buses
+      if (err?.response?.status === 404) {
+        const busRes = await api.get('/buses').catch(() => ({ data: [] }))
+        const busesData = Array.isArray(busRes.data) ? busRes.data : (Array.isArray(busRes.data?.items) ? busRes.data.items : [])
+        return busesData.map((b) => ({
+          bus_id: b.bus_id ?? b.busId ?? b.id,
+          plate_number: b.plate_number ?? b.plateNumber ?? null,
+          status: b.status ?? null,
+          capacity: b.capacity ?? null,
+          latitude: null,
+          longitude: null,
+          recorded_at: null,
+        }))
+      }
+      throw err
+    }
   },
 }
 
@@ -1064,26 +1073,25 @@ export const AdminService = {
  */
 const listeners = new Set()
 
-// Mock: di chuyển buses mỗi 3 giây
-setInterval(() => {
-  const b1 = navigation_logs.find((n) => n.bus_id === 1)
-  if (b1) {
-    b1.longitude -= 0.0008
-    b1.latitude += 0.0003
-    b1.recorded_at = new Date().toISOString()
-  }
-  
-  const b2 = navigation_logs.find((n) => n.bus_id === 2)
-  if (b2) {
-    b2.latitude -= 0.0006
-    b2.longitude += 0.0004
-    b2.recorded_at = new Date().toISOString()
-  }
-  
-  // Notify all subscribers
-  const payload = navigation_logs
-  listeners.forEach((cb) => cb(payload))
-}, 3000)
+// Mock realtime movement only in DEV
+if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && Array.isArray(navigation_logs)) {
+  setInterval(() => {
+    const b1 = navigation_logs.find((n) => n.bus_id === 1)
+    if (b1) {
+      b1.longitude -= 0.0008
+      b1.latitude += 0.0003
+      b1.recorded_at = new Date().toISOString()
+    }
+    const b2 = navigation_logs.find((n) => n.bus_id === 2)
+    if (b2) {
+      b2.latitude -= 0.0006
+      b2.longitude += 0.0004
+      b2.recorded_at = new Date().toISOString()
+    }
+    const payload = navigation_logs
+    listeners.forEach((cb) => cb(payload))
+  }, 3000)
+}
 
 export const Realtime = {
   /**
@@ -1104,7 +1112,9 @@ export const Realtime = {
    */
   subscribe(cb) {
     listeners.add(cb)
-    cb(navigation_logs) // Initial data
+    if ((typeof import.meta !== 'undefined' && import.meta.env?.DEV) && Array.isArray(navigation_logs)) {
+      cb(navigation_logs) // Initial mock data in DEV
+    }
     return () => listeners.delete(cb) // Unsubscribe function
   },
 }

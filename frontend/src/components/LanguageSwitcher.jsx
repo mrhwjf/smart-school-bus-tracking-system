@@ -7,7 +7,15 @@ export default function LanguageSwitcher() {
   return (
     <Select
       value={current}
-      onChange={(e) => i18n.changeLanguage(e.target.value)}
+      onChange={(e) => {
+        const v = e.target.value
+        i18n.changeLanguage(v)
+        try {
+          localStorage.setItem('appLang', v)
+        } catch (err) {
+          // ignore
+        }
+      }}
       size="small"
       sx={{ minWidth: 120 }}
     >

@@ -94,14 +94,14 @@ export default function Topbar({ onSearch, onAccountClick, onLogout }) {
                 <ListItemIcon>
                   <PersonOutlineIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText>Account info</ListItemText>
+                <ListItemText>{t('accountInfo')}</ListItemText>
               </MenuItem>
               <Divider />
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>
                   <LogoutIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText>Logout</ListItemText>
+                <ListItemText>{t('logout')}</ListItemText>
               </MenuItem>
             </Menu>
           </Box>

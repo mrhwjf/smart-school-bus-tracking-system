@@ -26,8 +26,24 @@ export default function Schedules() {
   const fetchTrips = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await AdminService.listTrips()
-      setRows(Array.isArray(data) ? data : [])
+      // Fetch trips, then enrich with routes and stops for display if missing
+      const [trips, routes] = await Promise.all([
+        AdminService.listTrips(),
+        AdminService.listRoutes().catch(() => []),
+      ])
+      const tripsArr = Array.isArray(trips) ? trips : []
+      const routeMap = new Map((Array.isArray(routes) ? routes : []).map((r) => [r.route_id ?? r.routeId, r]))
+      const enriched = tripsArr.map((t) => {
+        const routeId = t.route?.route_id ?? t.route_id ?? t.routeId
+        const routeObj = t.route || routeMap.get(routeId) || null
+        const stopsArr = Array.isArray(t.stops) ? t.stops : (routeObj?.stops || [])
+        return {
+          ...t,
+          route: routeObj,
+          stops: stopsArr,
+        }
+      })
+      setRows(enriched)
     } catch {
       notify.error(t('notify.error'))
     } finally {

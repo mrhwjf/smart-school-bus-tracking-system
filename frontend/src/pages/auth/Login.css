@@ -11,6 +11,23 @@
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
 }
 
+/* Global language switcher positioned at top-right of the page */
+.global-lang-switcher {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+}
+
+.global-lang-switcher .MuiSelect-root {
+  background: rgba(255,255,255,0.95);
+  border-radius: 8px;
+  padding: 2px 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
 :root {
   --primary: #1e88e5;
   --accent: #a6e79a;
