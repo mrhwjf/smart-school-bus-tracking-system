@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { getAllUsers } from "./services/userService";
 import {
   Box,
   AppBar,
@@ -33,10 +34,13 @@ import EmailIcon from "@mui/icons-material/Email";
 import { useNavigate } from "react-router-dom";
 import { blue } from "@mui/material/colors";
 import Diversity1Icon from "@mui/icons-material/Diversity1";
+// import { get } from "../../backend/src/routes";
+// import { success } from "../../backend/src/utils/apiResponse";
 
-export default function GDChinh() {
+export default function GDHoSoCuaToi() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null); // dropdown anchor
+  const [user, setUser] = React.useState(null); // current user profile
   const open = Boolean(anchorEl);
   const theme = useTheme();
   const navigate = useNavigate();
@@ -45,13 +49,23 @@ export default function GDChinh() {
   const handleLogout = () => console.log("Đăng xuất");
 
   // Demo: danh sách 2 học sinh
-  const user = {
-    id: "3123410268",
-    name: "Đỗ Thiên Phú",
-    phone: "0896027930",
-    email: "youremail@sucksyourass.com",
-    relationship: "Dượng",
-  };
+  // const user_example_data = {
+  //   id: "3123410268",
+  //   name: "Đỗ Thiên Phú",
+  //   phone: "0896027930",
+  //   email: "youremail@sucksyourass.com",
+  //   relationship: "Dượng",
+  // };
+  // const user_example_data_2 = {
+  
+  useEffect(() => {
+    getAllUsers().then((res) => {
+      if (res.success && res.data.items) {
+        const found = res.data.items.find((u) => u.userId === 4);
+        setUser(found || null);
+      }
+    });
+  }, []);
 
   // dropdown handlers
   const handleOpenDropdown = (e) => setAnchorEl(e.currentTarget);
@@ -161,10 +175,10 @@ export default function GDChinh() {
                 {initials}
               </Avatar>
               <Typography variant="subtitle1" fontWeight={600}>
-                {user.name}
+                {user?.name || "Đang tải"}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                User ID: {user.id}
+                User ID: {user?.userId || "Đang tải"}
               </Typography>
             </Box>
 
@@ -177,7 +191,7 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Tên"
-                    secondary={user.name}
+                    secondary={user?.name || "Đang tải"}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -191,7 +205,7 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Số điện thoại"
-                    secondary={user.phone}
+                    secondary={user?.phone || "Đang tải"}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -205,7 +219,7 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Email"
-                    secondary={user.email}
+                    secondary={user?.email || "Đang tải"}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -219,7 +233,7 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Mối Quan hệ"
-                    secondary={user.relationship}
+                    secondary={user?.relationship || "Đang tải"}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },

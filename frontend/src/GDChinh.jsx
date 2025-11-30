@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   AppBar,
@@ -30,7 +30,8 @@ import CakeIcon from "@mui/icons-material/Cake";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { useNavigate } from "react-router-dom";
 import { blue } from "@mui/material/colors";
-
+import { getAllUsers } from "./services/userService";
+import { getAllStudents } from "./services/studentService";
 /**
  * GDChinh with dropdown selector for multiple students.
  * - Dropdown arrow is top-left (inside AppBar).
@@ -44,49 +45,62 @@ export default function GDChinh() {
   const theme = useTheme();
   const navigate = useNavigate();
 
-  const handleMenuItemClick = () => setSidebarOpen(true);
-  const handleLogout = () => console.log("Đăng xuất");
+  const [students, setStudents] = React.useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentStudentId, setCurrentStudentId] = useState(null);
 
-  // Demo: danh sách 2 học sinh
-  const students = [
-    {
-      id: "3123410268",
-      name: "Đỗ Thiên Phú",
-      class: "DCT1236",
-      gender: "Gay",
-      dob: "2005-10-21",
-    },
-    {
-      id: "3123410288",
-      name: "Nguyễn Grass",
-      class: "DCT1236",
-      gender: "Đàn ông",
-      dob: "2005-07-04",
-    },
-  ];
-
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        const res = await getAllStudents();
+        const items = res?.data?.items ?? [];
+        if (!mounted) return;
+        setStudents(items);
+        // choose default: prefer studentId === 1, else first item
+        if (items.length > 0) {
+          const prefer =
+            items.find((s) => String(s.studentId) === "1") || items[0];
+          setCurrentStudentId(prefer.studentId ?? prefer.studentId);
+        }
+      } catch (err) {
+        console.error("Load students failed:", err);
+        if (mounted) setStudents([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   // state: current selected student
-  const [currentId, setCurrentId] = React.useState(students[0].id);
-  const student = students.find((s) => s.id === currentId) || students[0];
-
+  const student =
+    students.find((s) => String(s.studentId) === String(currentStudentId)) ??
+    (students.length > 0 ? students[0] : null);
   // dropdown handlers
+  const handleMenuItemClick = () => setSidebarOpen(true);
+  const handleLogout = () => {
+    console.log("Logging out...");
+  };
   const handleOpenDropdown = (e) => setAnchorEl(e.currentTarget);
   const handleCloseDropdown = () => setAnchorEl(null);
   const handleSelectStudent = (id) => {
-    setCurrentId(id);
+    setCurrentStudentId(id);
     handleCloseDropdown();
   };
 
   // safe initials for avatar
-  const initials =
-    student && student.name
-      ? student.name
-          .split(" ")
-          .map((n) => (n ? n[0] : ""))
-          .filter(Boolean)
-          .slice(0, 2)
-          .join("")
-      : "";
+  const initials = student?.name
+    ? student.name
+        .split(" ")
+        .map((n) => (n ? n[0] : ""))
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+    : "";
 
   return (
     <>
@@ -141,26 +155,32 @@ export default function GDChinh() {
                   open={open}
                   onClose={handleCloseDropdown}
                   MenuListProps={{ "aria-labelledby": "student-selector" }}>
+                  {loading && <MenuItem disabled>Loading...</MenuItem>}
+                  {!loading && students.length === 0 && (
+                    <MenuItem disabled>No students</MenuItem>
+                  )}
                   {students.map((s) => (
                     <MenuItem
-                      key={s.id}
-                      selected={s.id === currentId}
-                      onClick={() => handleSelectStudent(s.id)}>
+                      key={s.studentId}
+                      selected={s.studentId === String(currentStudentId)}
+                      onClick={() => handleSelectStudent(s.studentId)}>
                       <Box
                         sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <Avatar sx={{ width: 30, height: 30, fontSize: 12 }}>
                           {s.name
-                            .split(" ")
-                            .map((n) => (n ? n[0] : ""))
-                            .slice(0, 2)
-                            .join("")}
+                            ? s.name
+                                .split(" ")
+                                .map((n) => (n ? n[0] : ""))
+                                .slice(0, 2)
+                                .join("")
+                            : "?"}
                         </Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={600}>
-                            {s.name}
+                            {s.name ?? "Unknown"}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {s.class} • {s.id}
+                            {s.class?.name ?? "Unknown"} • {s.studentId}
                           </Typography>
                         </Box>
                       </Box>
@@ -224,10 +244,13 @@ export default function GDChinh() {
                 {initials}
               </Avatar>
               <Typography variant="subtitle1" fontWeight={600}>
-                {student.name}
+                {student?.name ??
+                  (loading ? "Đang tải..." : "Không có dữ liệu")}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Student ID: {student.id}
+                Student ID:{" "}
+                {student?.studentId ??
+                  (loading ? "Đang tải..." : "Không có dữ liệu")}
               </Typography>
             </Box>
 
@@ -240,7 +263,10 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Tên"
-                    secondary={student.name}
+                    secondary={
+                      student?.name ??
+                      (loading ? "Đang tải..." : "Không có dữ liệu")
+                    }
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -254,7 +280,10 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Lớp"
-                    secondary={student.class}
+                    secondary={
+                      student?.class?.name ??
+                      (loading ? "Đang tải..." : "Không có dữ liệu")
+                    }
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -268,7 +297,10 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Giới tính"
-                    secondary={student.gender}
+                    secondary={
+                      student?.gender ??
+                      (loading ? "Đang tải..." : "Không có dữ liệu")
+                    }
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -282,7 +314,10 @@ export default function GDChinh() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Ngày Sinh"
-                    secondary={student.dob}
+                    secondary={
+                      student?.dateOfBirth ??
+                      (loading ? "Đang tải..." : "Không có dữ liệu")
+                    }
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
