@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -20,8 +20,13 @@ import BuildIcon from "@mui/icons-material/Build";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CloseIcon from "@mui/icons-material/Close";
+import { sendAlert } from "../../service/notificationService";
+import { getAllUsers } from "../../service/userService";
 
 const SendAlert = ({ onBack }) => {
+  const [parents, setParents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const alerts = [
     { id: 1, label: "Tai nạn", icon: <DirectionsCarIcon sx={{ fontSize: 36 }} />, color: "#ffe5e5" },
     { id: 2, label: "Trễ", icon: <AccessTimeIcon sx={{ fontSize: 36 }} />, color: "#fff2e0" },
@@ -33,15 +38,58 @@ const SendAlert = ({ onBack }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
 
+  useEffect(() => {
+    fetchParents();
+  }, []);
+
+  const fetchParents = async () => {
+    try {
+      const result = await getAllUsers();
+      if (result && result.success && result.data?.items) {
+        const parentUsers = result.data.items.filter(user => user.role?.name === 'PARENT');
+        setParents(parentUsers);
+      }
+    } catch (err) {
+      console.error("Error fetching parents:", err);
+    }
+  };
+
   const handleAlertClick = (alertType) => {
     setSelectedAlert(alertType);
     setConfirmOpen(true);
   };
 
-  const handleSendConfirm = () => {
-    setConfirmOpen(false);
-    setSuccessOpen(true);
-    setTimeout(() => setSuccessOpen(false), 3000);
+  const handleSendConfirm = async () => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      const alertTypeMap = {
+        "Tai nạn": "ALERT",
+        "Trễ": "WARNING",
+        "Vấn đề kỹ thuật": "WARNING",
+        "Khác": "INFO",
+      };
+
+      const recipientIds = parents.map(p => p.userId);
+      
+      await sendAlert({
+        messageText: `Cảnh báo: ${selectedAlert}`,
+        type: alertTypeMap[selectedAlert] || "INFO",
+        latitude: 0,
+        longitude: 0,
+        recipientIds,
+      });
+
+      setConfirmOpen(false);
+      setSuccessOpen(true);
+      setTimeout(() => setSuccessOpen(false), 3000);
+    } catch (err) {
+      setError(err.message || "Gửi cảnh báo thất bại");
+      setConfirmOpen(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,6 +127,12 @@ const SendAlert = ({ onBack }) => {
 
       {/* ⚙️ MAIN CONTENT */}
       <Box sx={{ p: 3, flex: 1 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
+            {error}
+          </Alert>
+        )}
+
         <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
           Select Alert Type
         </Typography>
@@ -170,9 +224,10 @@ const SendAlert = ({ onBack }) => {
         variant="contained"
         color="error"
         onClick={handleSendConfirm}
+        disabled={loading}
         sx={{ minWidth: 120 }}
       >
-        Gửi cảnh báo
+        {loading ? "Đang gửi..." : "Gửi cảnh báo"}
       </Button>
     </DialogActions>
   </Box>

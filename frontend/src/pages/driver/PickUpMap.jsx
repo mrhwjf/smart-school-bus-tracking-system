@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -16,6 +16,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 
 // Components và Icons
@@ -35,6 +37,12 @@ import L from "leaflet";
 // Components phụ (giả lập)
 import SubmitReport from "./SubmitReport";
 import SendAlert from "./SendAlert";
+
+// API Services
+import { getAssignedTripForDriver } from "../../service/tripService";
+import { getScheduleById } from "../../service/scheduleService";
+import { createPickupRecord} from "../../service/pickupRecordService";
+import { getAllStudents } from "../../service/studentService";
 
 // ***************************************
 // 🔑 THÔNG TIN MAP/TILE (Leaflet/OSM)
@@ -74,52 +82,112 @@ const MapResizeHandler = () => {
 // (ORS trả về GeoJSON, không cần hàm này nữa)
 
 const PickUpMap = ({ onTripComplete }) => {
-  // NHẬN DỮ LIỆU TRIP VÀ THÊM TỌA ĐỘ GIẢ LẬP
-  const tripData = useMemo(
-    () => ({
-      trip_id: 1,
-      current_stop_index: 0,
-      stops: [
-        {
-          stop_id: 1,
-          name: "Điểm đón Nguyễn Huệ",
-          order: 1,
-          lat: 10.7788, // Tọa độ giả lập
-          lng: 106.7022, // Tọa độ giả lập
-          students: [
-            { id: 1, name: "Do Thien Phu", class: "5A", phoneNumber: "0123456789", checked: false },
-            { id: 2, name: "Phuong cay", class: "5A", phoneNumber: "0987654321", checked: false },
-          ],
-        },
-        {
-          stop_id: 2,
-          name: "Điểm đón Lý Tự Trọng",
-          order: 2,
-          lat: 10.7758, // Tọa độ giả lập
-          lng: 106.6961, // Tọa độ giả lập
-          students: [
-            { id: 3, name: "Phong Nguyen", class: "5A", phoneNumber: "0112233445", checked: false },
-            { id: 4, name: "Khang Nguyen", class: "4A", phoneNumber: "0223344556", checked: false },
-          ],
-        },
-        {
-          stop_id: 3,
-          name: "Trường Tiểu học DEF",
-          order: 3,
-          lat: 10.75996438642143, // Tọa độ giả lập
-          lng: 106.68228277680376, // Tọa độ giả lập
-          students: [],
-        },
-      ],
-    }),
-    []
-  );
-
-
-  const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const allStops = tripData.stops;
+  // TODO: Lấy DRIVER_ID từ context/session
+  const DRIVER_ID = 2;
   
+  // State cho trip data từ API
+  const [tripData, setTripData] = useState(null);
+  const [loadingTrip, setLoadingTrip] = useState(true);
+  const [tripError, setTripError] = useState(null);
+  
+  // State cho UI
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [currentStopIndex, setCurrentStopIndex] = useState(0);
+  const [students, setStudents] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [view, setView] = useState("map");
+  const [openMissedDialog, setOpenMissedDialog] = useState(false);
+  const [missedStudents, setMissedStudents] = useState([]);
+  const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
+
+  // Fetch trip được phân công cho driver
   useEffect(() => {
+    const fetchAssignedTrip = async () => {
+      try {
+        setLoadingTrip(true);
+        setTripError(null);
+
+        // 1. Lấy trip được phân công hôm nay
+        const trip = await getAssignedTripForDriver(DRIVER_ID);
+        
+        if (!trip) {
+          setTripError("Không có chuyến đi nào được phân công hôm nay");
+          return;
+        }
+
+        // 2. Lấy schedule để biết routeId và route details
+        const scheduleResult = await getScheduleById(trip.scheduleId);
+        
+        if (!scheduleResult || !scheduleResult.success || !scheduleResult.data) {
+          setTripError("Không thể tải thông tin lịch trình");
+          return;
+        }
+
+        const schedule = scheduleResult.data;
+        const route = schedule.route;
+
+        if (!route || !route.stops || route.stops.length === 0) {
+          setTripError("Không có điểm dừng nào trong tuyến này");
+          return;
+        }
+
+        // 3. Fetch all students để lấy thông tin đầy đủ
+        const studentsResult = await getAllStudents();
+        const studentsMap = {};
+        
+        if (studentsResult && studentsResult.success && studentsResult.data?.items) {
+          studentsResult.data.items.forEach(student => {
+            studentsMap[student.studentId] = student;
+          });
+        }
+
+        // 4. Transform stops data với student info đầy đủ
+        const stops = route.stops
+          .sort((a, b) => (a.seqIndex || 0) - (b.seqIndex || 0))
+          .map(stop => ({
+            stop_id: stop.stopId,
+            name: stop.name,
+            order: stop.seqIndex || 0,
+            lat: stop.latitude,
+            lng: stop.longitude,
+            students: (stop.students || []).map(s => {
+              const studentData = studentsMap[s.studentId];
+              return {
+                id: s.studentId,
+                name: studentData?.name || 'N/A',
+                class: studentData?.class?.name || s.className || 'N/A',
+                phoneNumber: studentData?.parent?.phoneNumber || 'N/A',
+                checked: false,
+              };
+            }),
+          }));
+
+        // 5. Set trip data
+        const transformedTrip = {
+          trip_id: trip.tripId,
+          current_stop_index: 0,
+          stops: stops,
+        };
+
+        setTripData(transformedTrip);
+      } catch (err) {
+        console.error("Error fetching assigned trip:", err);
+        setTripError("Lỗi kết nối API. Vui lòng kiểm tra backend.");
+      } finally {
+        setLoadingTrip(false);
+      }
+    };
+
+    fetchAssignedTrip();
+  }, []);
+  
+  // Fetch route coordinates từ OpenRouteService
+  useEffect(() => {
+    if (!tripData || !tripData.stops || tripData.stops.length < 2) {
+      setRouteCoordinates([]);
+      return;
+    }
+
     // Lấy danh sách tọa độ dừng theo định dạng ORS: [lng, lat]
     const coords = tripData.stops.map((stop) => [stop.lng, stop.lat]); 
 
@@ -175,25 +243,12 @@ const PickUpMap = ({ onTripComplete }) => {
         console.error('OpenRouteService API error:', err.message);
         setRouteCoordinates([]);
       });
-  }, [tripData.stops]); // Dependency array: gọi lại khi điểm dừng thay đổi
-
-
-  const [currentStopIndex, setCurrentStopIndex] = useState(
-    tripData.current_stop_index
-  );
-  const [students, setStudents] = useState(tripData.stops[0].students);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [view, setView] = useState("map");
-  const [openMissedDialog, setOpenMissedDialog] = useState(false);
-  const [missedStudents, setMissedStudents] = useState([]);
-  const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
-
-  const currentStop = tripData.stops[currentStopIndex];
-  const totalStops = tripData.stops.length;
-  const isLastStop = currentStopIndex === totalStops - 1;
+  }, [tripData]); // Dependency array: gọi lại khi tripData thay đổi
 
   // Cập nhật danh sách học sinh và tâm bản đồ khi điểm dừng thay đổi
   useEffect(() => {
+    if (!tripData || !tripData.stops[currentStopIndex]) return;
+    
     const newStudents = tripData.stops[currentStopIndex].students.map((s) => ({
       ...s,
       checked: false,
@@ -201,26 +256,113 @@ const PickUpMap = ({ onTripComplete }) => {
     setStudents(newStudents);
 
     // Cập nhật tâm bản đồ đến điểm dừng hiện tại
+    const currentStop = tripData.stops[currentStopIndex];
     if (currentStop.lat && currentStop.lng) {
       setMapCenter([currentStop.lat, currentStop.lng]);
     }
-  }, [currentStopIndex, tripData.stops, currentStop.lat, currentStop.lng]);
+  }, [currentStopIndex, tripData]);
 
-  const toggleStudent = (id) => {
-    setStudents((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, checked: !s.checked } : s))
+  // Hiển thị loading khi đang fetch data
+  if (loadingTrip) {
+    return (
+      <Box
+        sx={{
+          width: 414,
+          height: 896,
+          margin: "0 auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <CircularProgress />
+      </Box>
     );
+  }
+
+  // Hiển thị lỗi nếu có
+  if (tripError || !tripData) {
+    return (
+      <Box
+        sx={{
+          width: 414,
+          height: 896,
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 3,
+        }}
+      >
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {tripError || "Không thể tải dữ liệu chuyến đi"}
+        </Alert>
+        <Button variant="contained" onClick={() => window.location.reload()}>
+          Thử lại
+        </Button>
+      </Box>
+    );
+  }
+
+  const currentStop = tripData.stops[currentStopIndex];
+  const totalStops = tripData.stops.length;
+  const isLastStop = currentStopIndex === totalStops - 1;
+
+  const toggleStudent = async (id) => {
+    const student = students.find(s => s.id === id);
+    const newCheckedState = !student.checked;
+    
+    // Cập nhật UI ngay lập tức
+    setStudents((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, checked: newCheckedState } : s))
+    );
+
+    // Gọi API để tạo hoặc cập nhật pickup record
+    try {
+      if (newCheckedState) {
+        // Check → Tạo PICKED_UP record
+        await createPickupRecord({
+          studentId: id,
+          stopId: currentStop.stop_id,
+          tripId: tripData.trip_id,
+          status: "PICKED_UP",
+          recordedAt: new Date().toISOString(),
+        });
+      }
+      // Note: Nếu uncheck, có thể cần API để xóa hoặc update về WAITING
+    } catch (error) {
+      console.error("Error updating pickup record:", error);
+      // Rollback UI nếu API fail
+      setStudents((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, checked: !newCheckedState } : s))
+      );
+    }
   };
 
-  const handleNextStop = () => {
+  const handleNextStop = async () => {
     const notPicked = students.filter((s) => !s.checked);
 
     if (notPicked.length > 0) {
       setMissedStudents(notPicked);
       setOpenMissedDialog(true);
-      notPicked.forEach((student) => {
-        console.log(`[MISSED] ${student.name} tại ${currentStop.name}`);
-      });
+      
+      // Tạo MISSED records cho học sinh vắng
+      try {
+        await Promise.all(
+          notPicked.map(student =>
+            createPickupRecord({
+              studentId: student.id,
+              stopId: currentStop.stop_id,
+              tripId: tripData.trip_id,
+              status: "MISSED",
+              recordedAt: new Date().toISOString(),
+            })
+          )
+        );
+      } catch (error) {
+        console.error("Error creating MISSED records:", error);
+      }
     } else {
       goToNextStop();
     }
@@ -256,7 +398,7 @@ const PickUpMap = ({ onTripComplete }) => {
   ];
 
   // === MÀN HÌNH PHỤ ===
-  if (view === "report") return <SubmitReport onBack={() => setView("map")} />;
+  if (view === "report") return <SubmitReport onBack={() => setView("map")} tripId={tripData.trip_id} />;
   if (view === "alert") return <SendAlert onBack={() => setView("map")} />;
 
   // === MÀN HÌNH HOÀN THÀNH → QUAY VỀ DASHBOARD ===

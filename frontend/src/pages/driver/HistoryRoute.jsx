@@ -1,58 +1,153 @@
-import React, { useState } from "react";
-import { Box, Typography, Card, CardContent, IconButton } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, Typography, Card, CardContent, IconButton, CircularProgress } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TripDetails from "./TripDetails";
-
-const tripsData = [
-  {
-    id: 1,
-    title: "Chiều - 27 Tháng 9 2025",
-    route: "120",
-    time: "15:00 - 16:30",
-    stops: 2,
-    students: 4,
-    status: "Hoàn thành",
-    type: "Trả",
-  },
-  {
-    id: 2,
-    title: "Sáng - 27 Tháng 9 2025",
-    route: "120",
-    time: "07:00 - 08:30",
-    stops: 2,
-    students: 4,
-    status: "Hoàn thành",
-    type: "Đón",
-  },
-  {
-    id: 3,
-    title: "Chiều - 26 Tháng 9 2025",
-    route: "120",
-    time: "15:00 - 16:30",
-    stops: 2,
-    students: 4,
-    status: "Hoàn thành",
-    type: "Đón",
-  },
-  {
-    id: 4,
-    title: "Sáng - 27 Tháng 9 2025",
-    route: "120",
-    time: "07:00 - 08:30",
-    stops: 2,
-    students: 4,
-    status: "Hoàn thành",
-    type: "Đón",
-  },
-];
+import { getAllTrips } from "../../service/tripService";
+import { getRouteById } from "../../service/routeService";
+import { getSchedulesByDriverId } from "../../service/scheduleService";
 
 const HistoryRoute = ({ onBack }) => {
   const [selectedTrip, setSelectedTrip] = useState(null);
+  const [completedTrips, setCompletedTrips] = useState([]);
+  const [routesData, setRoutesData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const DRIVER_ID = 2; // TODO: Lấy từ context/session
+
+  useEffect(() => {
+    fetchCompletedTrips();
+  }, []);
+
+  const fetchCompletedTrips = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 1. Fetch schedules của driver để lấy danh sách trips và routeId
+      const schedulesResult = await getSchedulesByDriverId(DRIVER_ID);
+      if (!schedulesResult || !schedulesResult.success || !schedulesResult.data) {
+        setError("Không thể tải lịch trình");
+        return;
+      }
+
+      const schedules = schedulesResult.data.items || [];
+      // Map scheduleId -> schedule để lấy routeId và thời gian sau này
+      const scheduleMap = {};
+      schedules.forEach(s => {
+        scheduleMap[s.scheduleId] = s;
+      });
+
+      // 2. Fetch tất cả trips
+      const tripsResult = await getAllTrips();
+      if (tripsResult && tripsResult.success && tripsResult.data) {
+        const allTrips = tripsResult.data.items || [];
+
+        const routesDataMap = {};
+        const driverCompletedTrips = [];
+
+        for (const trip of allTrips) {
+          // Chỉ lấy trips có status COMPLETED và scheduleId thuộc driver
+          if (trip.status !== 'COMPLETED') continue;
+          
+          const schedule = scheduleMap[trip.scheduleId];
+          if (!schedule) continue; // Không phải schedule của driver này
+
+          try {
+            // Lấy routeId từ schedule, không phải từ trip
+            const routeId = schedule.routeId;
+            
+            // Fetch route data
+            if (!routesDataMap[routeId]) {
+              const routeResult = await getRouteById(routeId);
+              if (routeResult && routeResult.success && routeResult.data) {
+                routesDataMap[routeId] = routeResult.data;
+              }
+            }
+
+            // Gắn routeId và schedule vào trip để dùng sau này
+            trip.routeId = routeId;
+            trip.schedule = schedule;
+            driverCompletedTrips.push(trip);
+          } catch (err) {
+            console.warn(`⚠️ Could not fetch data for trip ${trip.tripId}:`, err);
+          }
+        }
+
+        // Sắp xếp theo thời gian mới nhất trước
+        driverCompletedTrips.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+        setCompletedTrips(driverCompletedTrips);
+        setRoutesData(routesDataMap);
+      } else {
+        setError("Không thể tải lịch sử");
+      }
+    } catch (err) {
+      setError("Lỗi kết nối. Vui lòng kiểm tra backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Convert trip data to display format
+  const formatTripForDisplay = (trip) => {
+    const routeData = routesData[trip.routeId];
+    const stops = routeData?.stops || [];
+    const totalStudents = stops.reduce((sum, stop) => sum + (stop.students?.length || 0), 0);
+
+    // Lấy thời gian từ schedule
+    const schedule = trip.schedule;
+    const timeStr = schedule 
+      ? `${schedule.startTime.slice(0, 5)} - ${schedule.endTime.slice(0, 5)}`
+      : 'N/A';
+
+    // Format date từ startTime của trip
+    let dateStr = 'N/A';
+    const dateSource = trip.startTime || trip.tripDate;
+    
+    if (dateSource) {
+      const startTime = new Date(dateSource);
+      if (!isNaN(startTime.getTime())) {
+        dateStr = startTime.toLocaleDateString('vi-VN', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric' 
+        });
+      }
+    }
+
+    return {
+      id: trip.tripId,
+      tripId: trip.tripId,
+      title: dateStr,
+      route: routeData?.name || `Tuyến ${trip.routeId}`,
+      time: timeStr,
+      routeData: routeData
+    };
+  };
 
   if (selectedTrip)
     return (
       <TripDetails trip={selectedTrip} onBack={() => setSelectedTrip(null)} />
     );
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
+  const displayTrips = completedTrips.map(formatTripForDisplay);
 
   const renderTripCard = (trip) => (
     <Card
@@ -70,21 +165,9 @@ const HistoryRoute = ({ onBack }) => {
     >
       {" "}
       <CardContent>
-        {/* Title + Status */}
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+        {/* Title */}
+        <Box>
           <Typography sx={{ fontWeight: 600 }}>{trip.title}</Typography>
-          <Typography
-            sx={{
-              backgroundColor: "#E0F2F1",
-              color: "#2E7D32",
-              borderRadius: "12px",
-              px: 1.5,
-              fontSize: "0.8rem",
-              fontWeight: 600,
-            }}
-          >
-            {trip.status}{" "}
-          </Typography>{" "}
         </Box>
 
         {/* Labels */}
@@ -98,29 +181,17 @@ const HistoryRoute = ({ onBack }) => {
           }}
         >
           <span>Tuyến</span>
-          <span>Điểm dừng</span>
-          <span>Học sinh</span>
         </Box>
 
         {/* Values */}
         <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
           <span>{trip.route}</span>
-          <span>{trip.stops}</span>
-          <span>{trip.students}/4</span>
+
         </Box>
 
-        {/* Time + Type */}
+        {/* Time */}
         <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
           <Typography variant="body2">{trip.time}</Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 600,
-              color: trip.type === "Đón" ? "#6ba885" : "#3949AB",
-            }}
-          >
-            {trip.type}
-          </Typography>
         </Box>
       </CardContent>
     </Card>
@@ -140,19 +211,24 @@ const HistoryRoute = ({ onBack }) => {
         }}
       >
         <IconButton onClick={onBack} sx={{ color: "white" }}>
-          {" "}
-          <ArrowBackIcon />{" "}
+          <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6" sx={{ fontWeight: 600, ml: 1 }}>
-          Lịch sử tuyến{" "}
-        </Typography>{" "}
+          Lịch sử tuyến
+        </Typography>
       </Box>
 
       <Typography variant="body2" sx={{ mb: 1, ml: 2 }}>
-        Chuyến đã đi ({tripsData.length})
+        Chuyến đã đi ({displayTrips.length})
       </Typography>
 
-      {tripsData.map(renderTripCard)}
+      {displayTrips.length === 0 ? (
+        <Box sx={{ textAlign: "center", mt: 4, color: "gray" }}>
+          <Typography>Chưa có chuyến nào hoàn thành</Typography>
+        </Box>
+      ) : (
+        displayTrips.map(renderTripCard)
+      )}
     </Box>
   );
 };

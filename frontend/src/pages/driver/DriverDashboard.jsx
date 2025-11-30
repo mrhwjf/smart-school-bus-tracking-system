@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -13,6 +13,8 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -20,54 +22,77 @@ import HistoryIcon from "@mui/icons-material/History";
 import EditIcon from "@mui/icons-material/Edit";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CloseIcon from "@mui/icons-material/Close";
-import WorkIcon from "@mui/icons-material/Work"; // Icon mới cho công việc
 
-import DriverSchedule from "./DriverSchedule"; // Giả định component này chứa TRIPS_DATA
+import DriverSchedule from "./DriverSchedule";
 import EditAccount from "./EditAccount";
 import PickUpMap from "./PickUpMap";
 import HistoryRoute from "./HistoryRoute";
-
-const DRIVER_INFO = {
-  name: "Ho Thanh Thai",
-  driverId: "D001",
-  busNo: "115",
-  routeNo: "120",
-  totalStops: 2,
-  totalStudents: 4,
-  avatar: "https://i.pravatar.cc/150?img=3",
-};
-
-// Dữ liệu mẫu (Lấy từ TRIPS_DATA của DriverSchedule - giả định hôm nay là 2025-11-24)
-// Tốt nhất nên fetch ngày hiện tại, nhưng ở đây dùng dữ liệu cứng để đảm bảo kết quả
-const TODAY_TRIPS_DATA = [
-    {
-      id: 1,
-      title: "Buổi Sáng - Tuyến A",
-      route: "120",
-      time: "07:00 - 08:30",
-      students: 4,
-      stops: 2,
-      type: "Pickup",
-    },
-    {
-      id: 2,
-      title: "Buổi Chiều - Tuyến A",
-      route: "120",
-      time: "15:00 - 16:30",
-      students: 4,
-      stops: 2,
-      type: "Drop",
-    },
-];
-// Số chuyến hôm nay
-const todayTripCount = TODAY_TRIPS_DATA.length;
-
+import { getAllUsers } from "../../service/userService";
+import { getBusById } from "../../service/busService";
 
 const DriverDashboard = () => {
   const [open, setOpen] = useState(false);
   const [screen, setScreen] = useState("dashboard");
+  
+  // State cho dữ liệu từ API
+  const [driverData, setDriverData] = useState(null);
+  const [busData, setBusData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const handleTripComplete = () => setScreen("dashboard");
+  // TODO: Thay bằng driverId thực từ session khi có đăng nhập
+  const DRIVER_ID = 2; // Dùng ID test từ database (Trần Văn Tài)
+  const BUS_ID = 1; // Bus của driver ID 2 (từ database: buses.driver_id = 2 → busId = 1)
+
+  // Fetch dữ liệu khi component mount
+  useEffect(() => {
+    fetchDriverData();
+  }, []);
+
+  const fetchDriverData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 1. Gọi getAllUsers và lọc theo DRIVER_ID
+      const userResult = await getAllUsers();
+      
+      if (!userResult || !userResult.success || !userResult.data) {
+        setError("Không thể tải danh sách người dùng");
+        return;
+      }
+
+      // Lọc user có userId === DRIVER_ID
+      const users = userResult.data.items || [];
+      const driver = users.find(u => u.userId === DRIVER_ID);
+      
+      if (!driver) {
+        setError("Không tìm thấy thông tin tài xế");
+        return;
+      }
+
+      setDriverData(driver);
+      
+
+      // 2. Gọi getBusById để lấy thông tin xe buýt (plateNumber, model)
+      const busResult = await getBusById(BUS_ID);
+      
+      if (busResult && busResult.success && busResult.data) {
+        setBusData(busResult.data);
+      }
+
+    } catch (err) {
+      
+      setError("Lỗi kết nối. Vui lòng kiểm tra backend đang chạy.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTripComplete = () => {
+    setScreen("dashboard");
+    fetchDriverData(); // Refresh dữ liệu sau khi hoàn thành chuyến
+  };  
 
   const menuItems = [
     {
@@ -96,16 +121,43 @@ const DriverDashboard = () => {
     },
   ];
 
+  // Xử lý dữ liệu hiển thị từ API response
+  const displayData = driverData ? {
+    name: driverData.name || 'N/A',
+    avatar: '/default-avatar.png',
+    plateNumber: busData?.plateNumber || 'N/A',
+  } : null;
+
   const screens = {
     dashboard: (
-      <DashboardHome
-        data={DRIVER_INFO}
-        todayTripCount={todayTripCount} // Truyền số chuyến hôm nay vào
-        onStart={() => setScreen("pickup")}
-      />
+      loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Box sx={{ p: 3 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+          <Button variant="contained" onClick={fetchDriverData}>
+            Thử lại
+          </Button>
+        </Box>
+      ) : (
+        <DashboardHome
+          data={displayData}
+          onStart={() => setScreen("pickup")}
+        />
+      )
     ),
     schedule: <DriverSchedule onBack={() => setScreen("dashboard")} />,
-    edit: <EditAccount onBack={() => setScreen("dashboard")} />,
+    edit: (driverData && busData) ? (
+      <EditAccount onBack={() => setScreen("dashboard")} driverData={driverData} busData={busData} />
+    ) : (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    ),
     history: <HistoryRoute onBack={() => setScreen("dashboard")} />,
     pickup: <PickUpMap onTripComplete={handleTripComplete} />,
   };
@@ -218,12 +270,9 @@ const Sidebar = ({ open, onClose, children }) => (
   </Box>
 );
 
-const DashboardHome = ({ data, onStart, todayTripCount }) => {
+const DashboardHome = ({ data, onStart }) => {
   const stats = [
-    { label: "Xe buýt", value: data.busNo, color: "#2962ff" },
-    { label: "Tuyến", value: data.routeNo, color: "#2962ff" },
-    { label: "Điểm dừng", value: data.totalStops },
-    { label: "Học sinh", value: data.totalStudents },
+    { label: "Xe buýt", value: data.plateNumber, color: "#2962ff" },
   ];
 
   return (
@@ -251,11 +300,11 @@ const DashboardHome = ({ data, onStart, todayTripCount }) => {
         <Typography sx={{ mt: 1, fontWeight: 600, fontSize: "1.2rem" }}>
           {data.name}
         </Typography>
-        <Typography variant="caption">ID: {data.driverId}</Typography>
+        
       </Box>
       
       {/* THÔNG BÁO CÔNG VIỆC HÔM NAY */}
-      <Card
+      {/* <Card
         elevation={4}
         sx={{
           mx: 2,
@@ -273,18 +322,18 @@ const DashboardHome = ({ data, onStart, todayTripCount }) => {
               Công việc hôm nay:
             </Typography>
             <Typography sx={{ fontWeight: 600, fontSize: "1.1rem" }}>
-              Bạn có {todayTripCount} chuyến .
+              Xem lịch trình trong "Thời gian biểu"
             </Typography>
           </Box>
         </CardContent>
-      </Card>
+      </Card> */}
 
 
       <Box
         sx={{
           p: 2,
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplaterRows: "1fr 1fr",
           gap: 2,
         }}
       >

@@ -1,67 +1,13 @@
-import React, { useState } from "react";
-import { Box, Typography, Card, CardContent, IconButton } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, Typography, Card, CardContent, IconButton, CircularProgress, Alert } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TripDetails from "./TripDetails";
-
-// ================================
-// DỮ LIỆU MẪU (CÓ THỂ LẤY TỪ API SAU NÀY)
-// ================================
-const TRIPS_DATA = {
-  "2025-11-24": [
-    {
-      id: 1,
-      title: "Buổi Sáng - Tuyến A",
-      route: "120",
-      time: "07:00 - 08:30",
-      students: 4,
-      stops: 2,
-      type: "Pickup",
-    },
-    {
-      id: 2,
-      title: "Buổi Chiều - Tuyến A",
-      route: "120",
-      time: "15:00 - 16:30",
-      students: 4,
-      stops: 2,
-      type: "Drop",
-    },
-  ],
-  "2025-11-25": [
-    {
-      id: 3,
-      title: "Buổi Sáng - Tuyến B",
-      route: "130",
-      time: "06:45 - 08:15",
-      students: 6,
-      stops: 3,
-      type: "Pickup",
-    },
-  ],
-  "2025-11-26": [
-    {
-      id: 4,
-      title: "Buổi Sáng - Tuyến A",
-      route: "120",
-      time: "07:00 - 08:30",
-      students: 5,
-      stops: 2,
-      type: "Pickup",
-    },
-    {
-      id: 5,
-      title: "Buổi Chiều - Tuyến B",
-      route: "130",
-      time: "15:00 - 16:30",
-      students: 6,
-      stops: 3,
-      type: "Drop",
-    },
-  ],
-};
+import { getSchedulesByDriverId } from "../../service/scheduleService";
+import { getRouteById } from "../../service/routeService";
+import { getAllTrips } from "../../service/tripService";
 
 // ================================
 // HÀM FORMAT NGÀY
@@ -91,6 +37,60 @@ const formatDayLabel = (date) => {
 const DriverWorkSchedule = ({ onBack }) => {
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [trips, setTrips] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [routesData, setRoutesData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const DRIVER_ID = 2; // TODO: Lấy từ context/session khi có đăng nhập
+
+  // Fetch trips và schedules
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 1. Fetch tất cả trips
+      const tripsResult = await getAllTrips();
+      if (tripsResult && tripsResult.success && tripsResult.data) {
+        setTrips(tripsResult.data.items || []);
+        
+      }
+
+      // 2. Fetch schedules của driver để lấy thông tin routes
+      const schedulesResult = await getSchedulesByDriverId(DRIVER_ID);
+      if (schedulesResult && schedulesResult.success && schedulesResult.data) {
+        const scheduleItems = schedulesResult.data.items || [];
+        setSchedules(scheduleItems);
+
+        // 3. Fetch route details cho mỗi schedule để lấy stops và students
+        const routesDataMap = {};
+        for (const schedule of scheduleItems) {
+          try {
+            const routeResult = await getRouteById(schedule.routeId);
+            if (routeResult && routeResult.success && routeResult.data) {
+              routesDataMap[schedule.routeId] = routeResult.data;
+            }
+          } catch (err) {
+            
+          }
+        }
+        setRoutesData(routesDataMap);
+      } else {
+        setError("Không thể tải lịch trình");
+      }
+    } catch (err) {
+
+      setError("Lỗi kết nối. Vui lòng kiểm tra backend.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const changeDate = (days) => {
     const newDate = new Date(currentDate);
@@ -98,8 +98,45 @@ const DriverWorkSchedule = ({ onBack }) => {
     setCurrentDate(newDate);
   };
 
-  const key = currentDate.toISOString().split("T")[0];
-  const trips = TRIPS_DATA[key] || [];
+  // Chuyển đổi trips từ API sang format để hiển thị
+  const convertTripsToDisplay = () => {
+    // Format ngày hiện tại thành YYYY-MM-DD
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const currentDateStr = `${year}-${month}-${day}`;
+
+    // Lọc trips theo ngày hiện tại và status SCHEDULED
+    const tripsForDate = trips.filter(trip => {
+      return trip.tripDate === currentDateStr && trip.status === 'SCHEDULED';
+    });
+
+    
+    return tripsForDate.map(trip => {
+      // Tìm schedule tương ứng
+      const schedule = schedules.find(s => s.scheduleId === trip.scheduleId);
+      if (!schedule) return null;
+
+      // Kiểm tra nếu schedule không thuộc driver hiện tại
+      if (schedule.driverId !== DRIVER_ID) return null;
+
+      const routeData = routesData[schedule.routeId];
+      const stops = routeData?.stops || [];
+      const totalStudents = stops.reduce((sum, stop) => sum + (stop.students?.length || 0), 0);
+
+      return {
+        id: trip.tripId,
+        tripId: trip.tripId,
+        title: `Tuyến ${schedule.routeId}`,
+        time: `${schedule.startTime.slice(0, 5)} - ${schedule.endTime.slice(0, 5)}`,
+        students: totalStudents,
+        stops: stops.length,
+        routeData: routeData 
+      };
+    }).filter(trip => trip !== null); 
+  };
+
+  const displayTrips = convertTripsToDisplay();
 
   // Nếu đã chọn 1 chuyến
   if (selectedTrip)
@@ -125,11 +162,7 @@ const DriverWorkSchedule = ({ onBack }) => {
       {" "}
       <CardContent>
         <Typography sx={{ fontWeight: 600 }}>{trip.title}</Typography>
-
-        <Typography variant="body2" sx={{ mt: 0.5 }}>
-          Tuyến {trip.route}
-        </Typography>
-
+        
         <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
           <Typography variant="body2">Thời gian: {trip.time}</Typography>
           <Typography variant="body2">Học sinh: {trip.students}</Typography>
@@ -199,16 +232,16 @@ const DriverWorkSchedule = ({ onBack }) => {
 
       {/* COUNT */}
       <Typography variant="body2" sx={{ mb: 1, ml: 2 }}>
-        Tổng số chuyến: {trips.length}
+        Tổng số ca làm việc: {displayTrips.length}
       </Typography>
 
       {/* DANH SÁCH CHUYẾN */}
-      {trips.length === 0 ? (
+      {displayTrips.length === 0 ? (
         <Box sx={{ textAlign: "center", mt: 4, color: "gray" }}>
-          <Typography>Không có chuyến nào trong ngày này</Typography>
+          <Typography>Không có ca làm việc nào</Typography>
         </Box>
       ) : (
-        trips.map(renderTripCard)
+        displayTrips.map(renderTripCard)
       )}
     </Box>
   );

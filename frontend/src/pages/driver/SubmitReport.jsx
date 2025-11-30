@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -10,23 +10,88 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  Alert,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonIcon from "@mui/icons-material/Person";
+import { getAssignedTripForDriver } from "../../service/tripService";
+import { getScheduleById } from "../../service/scheduleService";
+import { getAllStudents } from "../../service/studentService";
+import { getPickupRecords, updatePickupRecord } from "../../service/pickupRecordService";
 
-// 🔹 Dữ liệu tĩnh ra ngoài
-const INITIAL_STUDENTS = [
-  { id: 1, name: "Do Thien Phu", class: "5A", phoneNumber: "0123456789", checked: true },
-  { id: 2, name: "Phuong Cay", class: "5A", phoneNumber: "0987654321", checked: false },
-  { id: 3, name: "Phong Nguyen", class: "5A", phoneNumber: "0112233445", checked: false },
-  { id: 4, name: "Khang Nguyen", class: "4A", phoneNumber: "0223344556", checked: true },
-];
+const DRIVER_ID = 2;
 
 const SubmitReport = ({ onBack }) => {
-  const [students, setStudents] = useState(INITIAL_STUDENTS);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [openSuccess, setOpenSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchTripStudents();
+  }, []);
+
+  const fetchTripStudents = async () => {
+    try {
+      setFetchLoading(true);
+      
+      const trip = await getAssignedTripForDriver(DRIVER_ID);
+      if (!trip) {
+        setError("Không tìm thấy chuyến đi hôm nay");
+        setFetchLoading(false);
+        return;
+      }
+
+      const scheduleResult = await getScheduleById(trip.scheduleId);
+      const route = scheduleResult.data.route;
+
+      const studentsResult = await getAllStudents();
+      const studentsMap = {};
+      if (studentsResult?.success && studentsResult.data?.items) {
+        studentsResult.data.items.forEach(student => {
+          studentsMap[student.studentId] = student;
+        });
+      }
+
+      // Fetch pickup_records to get current status
+      const pickupRecordsResult = await getPickupRecords({ tripId: trip.tripId, size: 200 });
+      const pickupRecordsMap = {};
+      if (pickupRecordsResult.success && pickupRecordsResult.data?.items) {
+        pickupRecordsResult.data.items.forEach(record => {
+          pickupRecordsMap[record.studentId] = record;
+        });
+      }
+
+      const studentsList = [];
+      route.stops.forEach(stop => {
+        (stop.students || []).forEach(s => {
+          const studentData = studentsMap[s.studentId];
+          const pickupRecord = pickupRecordsMap[s.studentId];
+          
+          if (studentData && pickupRecord) {
+            studentsList.push({
+              id: s.studentId,
+              recordId: pickupRecord.recordId,
+              name: studentData.name || 'N/A',
+              class: studentData.class?.name || 'N/A',
+              phoneNumber: studentData.parent?.phoneNumber || 'N/A',
+              checked: pickupRecord.status === 'PICKED_UP', // Show as checked if PICKED_UP
+              status: pickupRecord.status, // Store actual status from DB
+            });
+          }
+        });
+      });
+
+      setStudents(studentsList);
+    } catch (err) {
+      console.error("Error fetching trip students:", err);
+      setError(err.message || "Lỗi khi tải danh sách học sinh");
+    } finally {
+      setFetchLoading(false);
+    }
+  };
 
   // 🔹 Toggle student checked state
   const handleToggle = useCallback((id) => {
@@ -35,22 +100,50 @@ const SubmitReport = ({ onBack }) => {
     );
   }, []);
 
-  // 🔹 Submit handler
-  const handleSubmit = useCallback(() => {
+  // 🔹 Submit handler with API calls
+  const handleSubmit = useCallback(async () => {
     const selected = students.filter((s) => s.checked);
     if (!selected.length) return alert("Vui lòng chọn ít nhất 1 học sinh!");
 
     setLoading(true);
-    setTimeout(() => {
+    setError("");
+
+    try {
+      // Update pickup_records based on checkbox state:
+      // - checked (PICKED_UP) → DROPPED_OFF
+      // - unchecked (WAITING/MISSED) → MISSED
+      const updatePromises = students.map(student => {
+        let newStatus;
+        
+        if (student.checked) {
+          // If checked, means PICKED_UP → change to DROPPED_OFF
+          newStatus = 'DROPPED_OFF';
+        } else {
+          // If unchecked, means not picked up → MISSED
+          newStatus = 'MISSED';
+        }
+
+        return updatePickupRecord(student.recordId, {
+          status: newStatus,
+          recordedAt: new Date().toISOString(),
+        });
+      });
+
+      await Promise.all(updatePromises);
+
       console.log("Báo cáo đã gửi:", selected.map((s) => s.name));
-      setLoading(false);
       setOpenSuccess(true);
 
       setTimeout(() => {
         setOpenSuccess(false);
         onBack();
       }, 1500);
-    }, 1200);
+    } catch (err) {
+      console.error("Error submitting report:", err);
+      setError(err.message || "Gửi báo cáo thất bại");
+    } finally {
+      setLoading(false);
+    }
   }, [students, onBack]);
 
   // 🔹 Render student list
@@ -127,14 +220,33 @@ const SubmitReport = ({ onBack }) => {
 
         {/* STUDENT LIST */}
         <Box sx={{ p: 2, flex: 1, overflowY: "auto" }}>
-          {studentList}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
+              {error}
+            </Alert>
+          )}
+
+          {fetchLoading ? (
+            <Typography textAlign="center" color="text.secondary" py={4}>
+              Đang tải danh sách học sinh...
+            </Typography>
+          ) : students.length === 0 ? (
+            <Typography textAlign="center" color="text.secondary" py={4}>
+              Không có học sinh nào trong chuyến đi này
+            </Typography>
+          ) : (
+            <>
+              
+              {studentList}
+            </>
+          )}
 
           {/* SUBMIT BUTTON */}
           <Button
             variant="contained"
             fullWidth
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || fetchLoading}
             sx={{
               borderRadius: "9999px",
               textTransform: "none",
