@@ -21,6 +21,16 @@ function toTripDto_in_pickup(rec) {
 		tripId: rec.trip_id,
 		scheduleId: rec.schedule_id,
 		tripDate: rec.trip_date,
+		routes: rec.Schedule && rec.Schedule.Route ? [toRouteDto_in_trip(rec.Schedule.Route)] : undefined,
+	};
+}
+
+function toRouteDto_in_trip(rec) {
+	if (!rec) return null;
+	return {
+		routeId: rec.route_id,
+		name: rec.name,
+		description: rec.description || null,
 	};
 }
 

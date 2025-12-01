@@ -21,7 +21,7 @@ async function list(
 	const limit = pageSize;
 	const offset = page * pageSize;
 
-	const { rows, count } = await PickupRecord.findAndCountAll({
+	const { rows, count } = await PickupRecord.scope('withDetails').findAndCountAll({
 		where: filter,
 		order,
 		limit,

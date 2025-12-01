@@ -231,4 +231,13 @@ db.User.addScope('withPendingNotifications', {
 	}]
 });
 
+db.PickupRecord.addScope('withDetails', {
+	include: [
+		{ model: db.Student, include: [{ model: db.Class }] },
+		{ model: db.Stop },
+		{ model: db.Trip, include: [{ model: db.Schedule, include: [{ model: db.Route }] }] }
+	]
+});
+
 module.exports = db;
+
