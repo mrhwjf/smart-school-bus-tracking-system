@@ -153,12 +153,28 @@ export const getAssignedTripForDriver = async (driverId) => {
     // Lấy today date (YYYY-MM-DD)
     const today = new Date().toISOString().split('T')[0];
     
-    // Gọi API /trips với filter scheduleId và tripDate
+    // 1. Fetch schedules của driver để lấy danh sách scheduleIds
+    const schedulesResult = await getSchedulesByDriverId(driverId);
+    if (!schedulesResult || !schedulesResult.success || !schedulesResult.data?.items) {
+      return null;
+    }
+
+    const schedules = schedulesResult.data.items;
+    if (schedules.length === 0) {
+      return null;
+    }
+
+    // Tạo map scheduleId -> schedule để lấy thời gian sau này
+    const scheduleMap = {};
+    schedules.forEach(s => {
+      scheduleMap[s.scheduleId] = s;
+    });
+
+    // 2. Fetch tất cả trips hôm nay
     const response = await axios.get(`${API_URL}/trips`, {
       params: {
         tripDate: today,
-        // Backend cần filter theo driverId hoặc busId
-        // Tạm thời fetch all trips hôm nay và filter client-side
+        status: 'SCHEDULED', // Chỉ lấy trips chưa hoàn thành
       }
     });
 
@@ -166,13 +182,36 @@ export const getAssignedTripForDriver = async (driverId) => {
       return null;
     }
 
-    // Filter trips của driver này (cần có driverId trong trip data)
-    const trips = response.data.data.items;
-    
-    // Tìm trip đầu tiên của driver hôm nay
-    // TODO: Backend cần trả về driverId trong trip response
-    // Tạm thời return trip đầu tiên
-    return trips.length > 0 ? trips[0] : null;
+    const allTrips = response.data.data.items;
+
+    // 3. Filter trips theo scheduleIds của driver
+    const driverTrips = allTrips.filter(trip => 
+      scheduleMap[trip.scheduleId] !== undefined
+    );
+
+    if (driverTrips.length === 0) {
+      return null;
+    }
+
+    // 4. Sort trips theo actual_start_time (hoặc schedule startTime nếu chưa có actual)
+    const sortedTrips = driverTrips.sort((a, b) => {
+      // Ưu tiên actual_start_time, nếu không có thì dùng schedule.startTime
+      const scheduleA = scheduleMap[a.scheduleId];
+      const scheduleB = scheduleMap[b.scheduleId];
+      
+      const timeA = a.actualStartTime 
+        ? new Date(a.actualStartTime)
+        : (scheduleA?.startTime ? new Date(`2000-01-01T${scheduleA.startTime}`) : new Date(0));
+      
+      const timeB = b.actualStartTime
+        ? new Date(b.actualStartTime)
+        : (scheduleB?.startTime ? new Date(`2000-01-01T${scheduleB.startTime}`) : new Date(0));
+      
+      return timeA - timeB; // Sớm nhất đến muộn nhất
+    });
+
+    // 5. Return trip SỚM NHẤT
+    return sortedTrips[0];
     
   } catch (error) {
     console.error('Error fetching assigned trip:', error);
