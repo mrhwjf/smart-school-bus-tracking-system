@@ -74,8 +74,6 @@ const MapResizeHandler = () => {
   return null;
 };
 
-// ❌ LOẠI BỎ HÀM GIẢI MÃ FLEXIBLE POLYLINE CỦA HERE
-// (ORS trả về GeoJSON, không cần hàm này nữa)
 
 const PickUpMap = ({ onTripComplete }) => {
   // TODO: Lấy DRIVER_ID từ context/session
