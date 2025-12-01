@@ -44,9 +44,9 @@ export default function GDHoSoCuaToi() {
   const open = Boolean(anchorEl);
   const theme = useTheme();
   const navigate = useNavigate();
-
+  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
   const handleMenuItemClick = () => setSidebarOpen(true);
-  const handleLogout = () => console.log("Đăng xuất");
+  const handleLogout = () => navigate("/login");
 
   // Demo: danh sách 2 học sinh
   // const user_example_data = {
@@ -57,16 +57,17 @@ export default function GDHoSoCuaToi() {
   //   relationship: "Dượng",
   // };
   // const user_example_data_2 = {
-  
+
   useEffect(() => {
     getAllUsers().then((res) => {
       if (res.success && res.data.items) {
-        const found = res.data.items.find((u) => u.userId === 4);
+        const found = res.data.items.find(
+          (u) => u.userId === authUser.user.user_id
+        );
         setUser(found || null);
       }
     });
-  }, []);
-
+  }, [authUser.user.user_id]);
   // dropdown handlers
   const handleOpenDropdown = (e) => setAnchorEl(e.currentTarget);
   const handleCloseDropdown = () => setAnchorEl(null);
@@ -205,7 +206,7 @@ export default function GDHoSoCuaToi() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Số điện thoại"
-                    secondary={user?.phone || "Đang tải"}
+                    secondary={user?.phoneNumber || "Đang tải"}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },
@@ -233,7 +234,7 @@ export default function GDHoSoCuaToi() {
                   </ListItemIcon>
                   <ListItemText
                     primary="Mối Quan hệ"
-                    secondary={user?.relationship || "Đang tải"}
+                    secondary={user?.role.name || "Đang tải"}
                     slotProps={{
                       primary: { fontWeight: 600, fontSize: 18 },
                       secondary: { fontSize: 16 },

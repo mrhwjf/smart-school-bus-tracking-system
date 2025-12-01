@@ -45,7 +45,7 @@ export default function GD_Map() {
     setSidebarOpen(true);
   }
   function handleLogout() {
-    console.log("Logging out...");
+    navigate("/login");
   }
   return (
     <Box

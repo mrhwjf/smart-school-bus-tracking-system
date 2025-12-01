@@ -81,6 +81,7 @@ export const AdminService = {
    * values: form values from login
    * Returns { success, token, user }
    */
+  
   async login(role, values) {
     // Try backend auth endpoint first (server expects { email | phone, password })
     try {
@@ -189,7 +190,7 @@ export const AdminService = {
         const d = res.data
         // Xử lý cả array và paginated response
         const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
+
         // Normalize: backend có thể trả userId hoặc user_id
         return items.map((u) => ({
           user_id: u.userId ?? u.user_id,
@@ -214,7 +215,7 @@ export const AdminService = {
         const res = await api.get('/students', { params: { page: 0, size: 100 } })
         const d = res.data
         const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
+
         // Dùng Map để loại bỏ duplicate classes
         const map = new Map()
         items.forEach((it) => {
@@ -253,7 +254,7 @@ export const AdminService = {
         const res = await api.get('/students', { params: q ? { q } : {} })
         const d = res.data
         const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
+
         /**
          * NORMALIZE DATA:
          * Backend DTO (camelCase) → Frontend (snake_case)
@@ -382,7 +383,7 @@ export const AdminService = {
         const userRes = await api.get('/users', { params: { roleId: 2, page: 0, size: 100 } })
         const d = userRes.data
         const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
+
         /**
          * NORMALIZE DRIVER DATA:
          * Backend có thể có nested driverInfo object
@@ -397,7 +398,7 @@ export const AdminService = {
           is_active: !(u.locked === true), // locked = false → active = true
           license_number: u.driverInfo?.licenseNumber ?? '',
         }))
-        
+
         // Filter theo search query
         const s = q?.toLowerCase?.() || ''
         return s ? mapped.filter((r) => String(r.name).toLowerCase().includes(s)) : mapped
@@ -428,7 +429,7 @@ export const AdminService = {
         const res = await api.get('/buses', { params: q ? { q } : {} })
         const d = res.data
         const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
+
         // Normalize bus data
         return items.map((it) => ({
           bus_id: it.busId ?? it.bus_id ?? it.id,
@@ -606,12 +607,12 @@ export const AdminService = {
         const res = await api.get('/routes')
         const d = res.data
         const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
+
         // Nếu routes chưa có stops, fetch riêng
         if (items.length && !('stops' in items[0])) {
           const stopsRes = await api.get('/stops').catch(() => ({ data: [] }))
           const stopData = Array.isArray(stopsRes.data) ? stopsRes.data : (Array.isArray(stopsRes.data?.items) ? stopsRes.data.items : [])
-          
+
           // Join routes với stops
           return items.map((r) => ({
             ...r,
@@ -754,7 +755,7 @@ export const AdminService = {
         const res = await api.get('/trips')
         const d = res.data
         const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
+
         /**
          * NORMALIZE TRIP DATA:
          * Backend có thể trả về schedules thay vì trips
@@ -831,17 +832,17 @@ export const AdminService = {
         const nextId = Math.max(0, ...trips.map((t) => t.trip_id)) + 1
         const row = { trip_id: nextId, status: 'SCHEDULED', ...input }
         trips.push(row)
-        
+
         // Tạo trip_stops
         if (Array.isArray(input.stop_ids)) {
           input.stop_ids.forEach((sid, i) => trip_stops.push({ trip_id: nextId, stop_id: sid, stop_order: i + 1 }))
         }
-        
+
         // Tạo trip_passengers
         if (Array.isArray(input.student_ids)) {
           input.student_ids.forEach((sid) => trip_passengers.push({ trip_id: nextId, student_id: sid }))
         }
-        
+
         return row
       },
     )
@@ -862,15 +863,15 @@ export const AdminService = {
         const list = await this.listTrips()
         const todayKey = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
         const isToday = (iso) => (iso ? new Date(iso).toISOString().slice(0, 10) === todayKey : false)
-        
+
         // Filter trips hôm nay
         let result = list.filter((t) => isToday(t.start_time)).sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-        
+
         // Nếu không có trips hôm nay, lấy 6 trips gần nhất
         if (result.length === 0) {
           result = [...list].sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).slice(0, 6)
         }
-        
+
         return result
       },
     )
@@ -886,7 +887,7 @@ export const AdminService = {
       async () => {
         const res = await api.get('/notifications')
         const list = res.data
-        
+
         /**
          * Derive severity từ message text
          * - error: trễ, muộn, chưa, lỗi, sự cố, offline
@@ -899,7 +900,7 @@ export const AdminService = {
           if (/(cảnh báo|đông|tắc|chậm)/.test(lower)) return 'warning'
           return 'info'
         }
-        
+
         return (Array.isArray(list) ? list : []).slice(0, 3).map((m) => ({
           id: m.notification_id || m.id,
           text: m.message || m.message_text || m.text,
@@ -943,7 +944,7 @@ export const AdminService = {
         const idx = trips.findIndex((t) => t.trip_id === id)
         if (idx === -1) throw new Error('Trip not found')
         trips[idx] = { ...trips[idx], ...patch }
-        
+
         // Update trip_stops nếu có
         if (patch.stop_ids) {
           for (let i = trip_stops.length - 1; i >= 0; i--) {
@@ -951,7 +952,7 @@ export const AdminService = {
           }
           patch.stop_ids.forEach((sid, i) => trip_stops.push({ trip_id: id, stop_id: sid, stop_order: i + 1 }))
         }
-        
+
         // Update trip_passengers nếu có
         if (patch.student_ids) {
           for (let i = trip_passengers.length - 1; i >= 0; i--) {
@@ -959,7 +960,7 @@ export const AdminService = {
           }
           patch.student_ids.forEach((sid) => trip_passengers.push({ trip_id: id, student_id: sid }))
         }
-        
+
         return trips[idx]
       },
     )
@@ -978,7 +979,7 @@ export const AdminService = {
       () => {
         const idx = trips.findIndex((t) => t.trip_id === id)
         if (idx >= 0) trips.splice(idx, 1)
-        
+
         // Cascade delete
         for (let i = trip_stops.length - 1; i >= 0; i--) {
           if (trip_stops[i].trip_id === id) trip_stops.splice(i, 1)
@@ -986,7 +987,7 @@ export const AdminService = {
         for (let i = trip_passengers.length - 1; i >= 0; i--) {
           if (trip_passengers[i].trip_id === id) trip_passengers.splice(i, 1)
         }
-        
+
         return true
       },
     )
@@ -1060,6 +1061,31 @@ export const AdminService = {
       }
       throw err
     }
+  },
+  async listSchedules() {
+    return safeApi(
+      async () => {
+        const res = await api.get('/schedules')
+        const data = res.data
+        const arr = Array.isArray(data)
+          ? data
+          : (data && typeof data === 'object')
+            ? (Array.isArray(data.items) ? data.items : Array.isArray(data.rows) ? data.rows : [])
+            : []
+        return arr.map((s) => ({
+          schedule_id: s.schedule_id ?? s.scheduleId,
+          route_id: s.route_id ?? s.routeId,
+          bus_id: s.bus_id ?? s.busId,
+          driver_id: s.driver_id ?? s.driverId,
+          start_time: s.start_time ?? s.startTime,
+          end_time: s.end_time ?? s.endTime,
+          shift: s.shift,
+          active: s.active,
+          days: s.days,
+        }))
+      },
+      () => [],
+    )
   },
 }
 
