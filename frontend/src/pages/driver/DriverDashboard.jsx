@@ -27,7 +27,8 @@ import DriverSchedule from "./DriverSchedule";
 import EditAccount from "./EditAccount";
 import PickUpMap from "./PickUpMap";
 import HistoryRoute from "./HistoryRoute";
-import { getAllUsers } from "../../service/userService";
+
+import { getUserById } from "../../service/userService";
 import { getBusById } from "../../service/busService";
 
 const DriverDashboard = () => {
@@ -54,24 +55,15 @@ const DriverDashboard = () => {
       setLoading(true);
       setError(null);
 
-      // 1. Gọi getAllUsers và lọc theo DRIVER_ID
-      const userResult = await getAllUsers();
+      // 1. Gọi getUserById để lấy thông tin đầy đủ (bao gồm driverInfo)
+      const userResult = await getUserById(DRIVER_ID);
       
       if (!userResult || !userResult.success || !userResult.data) {
-        setError("Không thể tải danh sách người dùng");
+        setError("Không thể tải thông tin tài xế");
         return;
       }
 
-      // Lọc user có userId === DRIVER_ID
-      const users = userResult.data.items || [];
-      const driver = users.find(u => u.userId === DRIVER_ID);
-      
-      if (!driver) {
-        setError("Không tìm thấy thông tin tài xế");
-        return;
-      }
-
-      setDriverData(driver);
+      setDriverData(userResult.data);
       
 
       // 2. Gọi getBusById để lấy thông tin xe buýt (plateNumber, model)

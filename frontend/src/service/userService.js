@@ -14,4 +14,17 @@ export async function getAllUsers() {
   }
 }
 
-
+// Get user by ID (includes driverInfo if user is driver)
+export async function getUserById(userId) {
+  try {
+      const res = await axios.get(`${API_URL}/users/${userId}`);
+      return res.data;
+  } catch (err) {
+      console.error(`Lỗi khi fetch user ${userId}:`, err);
+      return {
+        success: false,
+        message: err.message,
+        data: null
+      };
+  }
+}
