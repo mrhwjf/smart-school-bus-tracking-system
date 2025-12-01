@@ -85,6 +85,35 @@ async function isLocked(id, options = {}) {
 	return user ? user.locked : null;
 }
 
+async function listDrivers(
+	{ filter = {}, sort, page = 0, pageSize = 10 } = {},
+	options = {},
+) {
+	return list(
+		{
+			filter: { ...filter, role_id: '2' },
+			sort,
+			page,
+			pageSize,
+		},
+		options,
+	);
+}
+
+async function listParents(
+	{ filter = {}, sort, page = 0, pageSize = 10 } = {},
+	options = {},
+) {
+	return list(
+		{
+			filter: { ...filter, role_id: '3' },
+			sort,
+			page,
+			pageSize,
+		},
+		options,
+	);
+}
 
 module.exports = {
 	// Users
@@ -99,5 +128,9 @@ module.exports = {
 	deleteById,
 	bulkDelete,
 	lockById,
-	isLocked
+	isLocked,
+	// Drivers
+	listDrivers,
+	// Parents
+	listParents,
 };

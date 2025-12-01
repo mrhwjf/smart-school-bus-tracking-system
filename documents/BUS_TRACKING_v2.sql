@@ -8,7 +8,6 @@ CREATE DATABASE bus_tracking;
 USE bus_tracking;
 
 -- --- TABLE DEFINITIONS (Structure Only) ---
-
 -- Roles
 CREATE TABLE roles (
   role_id INT PRIMARY KEY AUTO_INCREMENT,

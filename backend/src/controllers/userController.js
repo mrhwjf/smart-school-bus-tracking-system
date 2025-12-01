@@ -87,9 +87,34 @@ async function deleteUser(req, res, next) {
 	} catch (err) { next(err); }
 }
 
+// Drivers
+async function listDrivers(req, res, next) {
+	try {
+		const { page = 0, size = 10, vehicleType, available } = req.query;
+		const filter = {};
+		if (vehicleType) filter.vehicle_type = vehicleType;
+		if (available !== undefined) filter.available = available === 'true' || available === true;
+		const result = await userService.listDrivers({ filter, page: Number(page), pageSize: Number(size) });
+		res.json(result);
+	} catch (err) { next(err); }
+}
+
+// Parents
+async function listParents(req, res, next) {
+	try {
+		const { page = 0, size = 10 } = req.query;
+		const result = await userService.listParents({ page: Number(page), pageSize: Number(size) });
+		res.json(result);
+	} catch (err) { next(err); }
+};
+
 module.exports = {
 	// Roles
 	listRoles, getRole, createRole, updateRole, deleteRole,
 	// Users
 	listUsers, getUser, createUser, updateUser, deleteUser,
+	// Drivers
+	listDrivers,
+	// Parents
+	listParents
 };
