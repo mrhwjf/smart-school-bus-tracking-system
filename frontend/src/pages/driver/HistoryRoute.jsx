@@ -12,7 +12,25 @@ const HistoryRoute = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const DRIVER_ID = 2; // TODO: Lấy từ context/session
+  // Đọc thông tin driver từ localStorage
+  const getDriverFromLocalStorage = () => {
+    try {
+      const authUser = localStorage.getItem('authUser');
+      if (!authUser) return null;
+      
+      const parsed = JSON.parse(authUser);
+      if (parsed.role === 'driver' && parsed.user) {
+        return parsed.user;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error reading localStorage:', err);
+      return null;
+    }
+  };
+
+  const loggedInDriver = getDriverFromLocalStorage();
+  const DRIVER_ID = loggedInDriver?.user_id || null;
 
   useEffect(() => {
     fetchCompletedTrips();

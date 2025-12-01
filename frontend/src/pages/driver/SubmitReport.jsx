@@ -17,10 +17,6 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonIcon from "@mui/icons-material/Person";
 import { getAssignedTripForDriver ,getScheduleById ,getAllStudents ,getPickupRecords, updatePickupRecord } from "../../service/userService";
 
-
-
-const DRIVER_ID = 2;
-
 const SubmitReport = ({ onBack }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,8 +24,28 @@ const SubmitReport = ({ onBack }) => {
   const [openSuccess, setOpenSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  // Đọc thông tin driver từ localStorage
+  const getDriverFromLocalStorage = () => {
+    try {
+      const authUser = localStorage.getItem('authUser');
+      if (!authUser) return null;
+      
+      const parsed = JSON.parse(authUser);
+      if (parsed.role === 'driver' && parsed.user) {
+        return parsed.user;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error reading localStorage:', err);
+      return null;
+    }
+  };
+
+  const loggedInDriver = getDriverFromLocalStorage();
+  const DRIVER_ID = loggedInDriver?.user_id || null;
+
   useEffect(() => {
-    fetchTripStudents();
+    fetchTripStudents();  
   }, []);
 
   const fetchTripStudents = async () => {
@@ -57,9 +73,15 @@ const SubmitReport = ({ onBack }) => {
       // Fetch pickup_records to get current status
       const pickupRecordsResult = await getPickupRecords({ tripId: trip.tripId, size: 200 });
       const pickupRecordsMap = {};
+      
       if (pickupRecordsResult.success && pickupRecordsResult.data?.items) {
         pickupRecordsResult.data.items.forEach(record => {
-          pickupRecordsMap[record.studentId] = record;
+          // Always keep the LATEST record for each student (by recordedAt)
+          const existing = pickupRecordsMap[record.studentId];
+          
+          if (!existing || new Date(record.recordedAt) > new Date(existing.recordedAt)) {
+            pickupRecordsMap[record.studentId] = record;
+          }
         });
       }
 
@@ -130,7 +152,6 @@ const SubmitReport = ({ onBack }) => {
 
       await Promise.all(updatePromises);
 
-      console.log("Báo cáo đã gửi:", selected.map((s) => s.name));
       setOpenSuccess(true);
 
       setTimeout(() => {
@@ -148,41 +169,44 @@ const SubmitReport = ({ onBack }) => {
   // 🔹 Render student list
   const studentList = useMemo(
     () =>
-      students.map((student) => (
-        <Paper
-          key={student.id}
-          elevation={1}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            p: 1.5,
-            mb: 1.5,
-            borderRadius: 9999,
-            bgcolor: student.checked ? "#e8f5e9" : "#f9f9f9",
-            border: student.checked ? "1px solid #4caf50" : "none",
-            transition: "all 0.2s",
-          }}
-        >
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <PersonIcon color={student.checked ? "success" : "action"} />
-            <Typography
-              fontWeight={500}
-              sx={{
-                
-                color: student.checked ? "text.secondary" : "text.primary",
-              }}
-            >
-              {student.name} {student.class ? `- ${student.class}` : ""} {student.phoneNumber ? `- ${student.phoneNumber}` : ""}
-            </Typography>
-          </Stack>
-          <Switch
-            checked={student.checked}
-            onChange={() => handleToggle(student.id)}
-            color="success"
-          />
-        </Paper>
-      )),
+      students.map((student) => {
+        const isPickedUp = student.status === 'PICKED_UP';
+        
+        return (
+          <Paper
+            key={student.id}
+            elevation={1}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              p: 1.5,
+              mb: 1.5,
+              borderRadius: 9999,
+              bgcolor: isPickedUp ? "#e8f5e9" : "#f9f9f9",
+              border: isPickedUp ? "1px solid #4caf50" : "none",
+              transition: "all 0.2s",
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <PersonIcon color={isPickedUp ? "success" : "action"} />
+              <Typography
+                fontWeight={500}
+                sx={{
+                  color: isPickedUp ? "success.main" : "text.primary",
+                }}
+              >
+                {student.name} {student.class ? `- ${student.class}` : ""} {student.phoneNumber ? `- ${student.phoneNumber}` : ""}
+              </Typography>
+            </Stack>
+            <Switch
+              checked={student.checked}
+              onChange={() => handleToggle(student.id)}
+              color="success"
+            />
+          </Paper>
+        );
+      }),
     [students, handleToggle]
   );
 

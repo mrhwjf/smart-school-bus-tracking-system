@@ -263,6 +263,21 @@ export const updatePickupRecord = async (recordId, data) => {
   }
 };
 
+/**
+ * Cập nhật trạng thái trip
+ * @param {number} tripId - ID của trip
+ * @param {Object} data - { status, actualStartTime, actualEndTime }
+ */
+export const updateTrip = async (tripId, data) => {
+  try {
+    const response = await axios.put(`${API_URL}/trips/${tripId}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating trip:", error);
+    throw error;
+  }
+};
+
 export const getAllStudents = async () => {
   try {
     const response = await axios.get(`${API_URL}/students`);

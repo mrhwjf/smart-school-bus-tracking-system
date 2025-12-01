@@ -28,7 +28,7 @@ import EditAccount from "./EditAccount";
 import PickUpMap from "./PickUpMap";
 import HistoryRoute from "./HistoryRoute";
 
-import { getUserById  , getBusById } from "../../service/userService";
+import { getUserById, getBusById, getSchedulesByDriverId } from "../../service/userService";
 
 
 const DriverDashboard = () => {
@@ -41,16 +41,44 @@ const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // TODO: Thay bằng driverId thực từ session khi có đăng nhập
-  const DRIVER_ID = 2; // Dùng ID test từ database (Trần Văn Tài)
-  const BUS_ID = 1; // Bus của driver ID 2 (từ database: buses.driver_id = 2 → busId = 1)
+  // Đọc thông tin driver từ localStorage
+  const getDriverFromLocalStorage = () => {
+    try {
+      const authUser = localStorage.getItem('authUser');
+      if (!authUser) return null;
+      
+      const parsed = JSON.parse(authUser);
+      if (parsed.role === 'driver' && parsed.user) {
+        return parsed.user;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error reading localStorage:', err);
+      return null;
+    }
+  };
+
+  const loggedInDriver = getDriverFromLocalStorage();
+  const DRIVER_ID = loggedInDriver?.user_id || null;
+  const [busId, setBusId] = useState(null);
 
   // Fetch dữ liệu khi component mount
   useEffect(() => {
+    if (!DRIVER_ID) {
+      setError("Vui lòng đăng nhập lại");
+      setLoading(false);
+      return;
+    }
     fetchDriverData();
   }, []);
 
   const fetchDriverData = async () => {
+    if (!DRIVER_ID) {
+      setError("Không tìm thấy thông tin tài xế");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -65,15 +93,27 @@ const DriverDashboard = () => {
 
       setDriverData(userResult.data);
       
-      // 2. Gọi getBusById để lấy thông tin xe buýt (plateNumber, model)
-      const busResult = await getBusById(BUS_ID);
+      // 2. Lấy schedule của driver để lấy bus_id
+      const schedulesResult = await getSchedulesByDriverId(DRIVER_ID);
       
-      if (busResult && busResult.success && busResult.data) {
-        setBusData(busResult.data);
+      if (schedulesResult && schedulesResult.success && schedulesResult.data?.items?.length > 0) {
+        // Lấy schedule đầu tiên (hoặc schedule active)
+        const activeSchedule = schedulesResult.data.items.find(s => s.active) || schedulesResult.data.items[0];
+        const driverBusId = activeSchedule.busId;
+        setBusId(driverBusId);
+        
+        // 3. Gọi getBusById để lấy thông tin xe buýt (plateNumber, model)
+        if (driverBusId) {
+          const busResult = await getBusById(driverBusId);
+          
+          if (busResult && busResult.success && busResult.data) {
+            setBusData(busResult.data);
+          }
+        }
       }
 
     } catch (err) {
-      
+      console.error('Error fetching driver data:', err);
       setError("Lỗi kết nối. Vui lòng kiểm tra backend đang chạy.");
     } finally {
       setLoading(false);
@@ -106,7 +146,9 @@ const DriverDashboard = () => {
       icon: <LogoutIcon color="error" />,
       action: () => {
         if (window.confirm("Bạn có chắc muốn đăng xuất?")) {
-          alert("Đăng xuất thành công!");
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authUser');
+          window.location.href = '/login';
         }
       },
     },

@@ -15,6 +15,7 @@ import GDHoSoCuaToi from "../GDHoSoCuaToi";
 import GDChinh from "../GDChinh";
 import GD_Map from "../GD_Map";
 import RouteHistory from "../RouteHistory";
+import DriverDashboard from "../pages/driver/DriverDashboard";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -37,6 +38,11 @@ export const router = createBrowserRouter([
     element: <GDHoSoCuaToi />,
     errorElement: <ErrorPage />,
   },
+  {
+    path: "/driver",
+    element: <DriverDashboard />,
+    errorElement: <ErrorPage />,
+  },
 
   { path: "/GDChinh", element: <GDChinh />, errorElement: <ErrorPage /> },
   { path: "/map", element: <GD_Map />, errorElement: <ErrorPage /> },
@@ -51,3 +57,4 @@ export const router = createBrowserRouter([
 ]);
 
 export default router;
+

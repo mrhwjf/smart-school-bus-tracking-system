@@ -64,6 +64,8 @@ export default function Login() {
           navigate('/')
         } else if(r === 'parent'){
           navigate('/HoSoCuaToi')
+        } else if (r === 'driver'){
+          navigate('/driver')
         }
          else {
           // Chưa có layout/route cho driver/parent → chuyển sang trang lỗi tạm thời

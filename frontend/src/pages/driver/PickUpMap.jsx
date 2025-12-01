@@ -39,7 +39,7 @@ import SubmitReport from "./SubmitReport";
 import SendAlert from "./SendAlert";
 
 // API Services
-import { getAssignedTripForDriver ,getScheduleById , createPickupRecord , getAllStudents  } from "../../service/userService";
+import { getAssignedTripForDriver ,getScheduleById , createPickupRecord , getAllStudents , updateTrip } from "../../service/userService";
 // ***************************************
 // 🔑 THÔNG TIN MAP/TILE (Leaflet/OSM)
 // ***************************************
@@ -76,8 +76,25 @@ const MapResizeHandler = () => {
 
 
 const PickUpMap = ({ onTripComplete }) => {
-  // TODO: Lấy DRIVER_ID từ context/session
-  const DRIVER_ID = 2;
+  // Đọc thông tin driver từ localStorage
+  const getDriverFromLocalStorage = () => {
+    try {
+      const authUser = localStorage.getItem('authUser');
+      if (!authUser) return null;
+      
+      const parsed = JSON.parse(authUser);
+      if (parsed.role === 'driver' && parsed.user) {
+        return parsed.user;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error reading localStorage:', err);
+      return null;
+    }
+  };
+
+  const loggedInDriver = getDriverFromLocalStorage();
+  const DRIVER_ID = loggedInDriver?.user_id || null;
   
   // State cho trip data từ API
   const [tripData, setTripData] = useState(null);
@@ -125,6 +142,7 @@ const PickUpMap = ({ onTripComplete }) => {
           return;
         }
 
+        
         // 3. Fetch all students để lấy thông tin đầy đủ
         const studentsResult = await getAllStudents();
         const studentsMap = {};
@@ -137,11 +155,11 @@ const PickUpMap = ({ onTripComplete }) => {
 
         // 4. Transform stops data với student info đầy đủ
         const stops = route.stops
-          .sort((a, b) => (a.seqIndex || 0) - (b.seqIndex || 0))
+          .sort((a, b) => (a.stopOrder || 0) - (b.stopOrder || 0))
           .map(stop => ({
             stop_id: stop.stopId,
             name: stop.name,
-            order: stop.seqIndex || 0,
+            order: stop.stopOrder || 0,
             lat: stop.latitude,
             lng: stop.longitude,
             students: (stop.students || []).map(s => {
@@ -156,6 +174,7 @@ const PickUpMap = ({ onTripComplete }) => {
             }),
           }));
 
+        
         // 5. Set trip data
         const transformedTrip = {
           trip_id: trip.tripId,
@@ -292,9 +311,12 @@ const PickUpMap = ({ onTripComplete }) => {
         <Alert severity="error" sx={{ mb: 2 }}>
           {tripError || "Không thể tải dữ liệu chuyến đi"}
         </Alert>
-        <Button variant="contained" onClick={() => window.location.reload()}>
-          Thử lại
-        </Button>
+        <Stack direction="row" spacing={2}>
+          
+          <Button variant="outlined" onClick={onTripComplete}>
+            Về trang chủ
+          </Button>
+        </Stack>
       </Box>
     );
   }
@@ -366,9 +388,27 @@ const PickUpMap = ({ onTripComplete }) => {
     setOpenMissedDialog(false);
 
     if (isLastStop) {
-      setView("complete");
+      // Complete the trip - update status to COMPLETED
+      completeTrip();
     } else {
       setCurrentStopIndex((prev) => prev + 1);
+    }
+  };
+
+  const completeTrip = async () => {
+    try {
+      // Update trip status to COMPLETED
+      await updateTrip(tripData.trip_id, {
+        status: 'COMPLETED',
+        actualEndTime: new Date().toISOString(),
+      });
+      
+      console.log('Trip completed successfully');
+      setView("complete");
+    } catch (error) {
+      console.error('Error completing trip:', error);
+      // Still show complete screen even if API fails
+      setView("complete");
     }
   };
 

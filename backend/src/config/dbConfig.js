@@ -4,7 +4,7 @@ require('dotenv').config();
 const sequelize = new Sequelize(
 	process.env.DB_NAME || 'bus_tracking',
 	process.env.DB_USER || 'root',
-	process.env.DB_PASSWORD || 'Hoangphuong9812113',
+	process.env.DB_PASSWORD || 'root',
 	{
 		host: process.env.DB_HOST || '127.0.0.1',
 		dialect: process.env.DB_DIALECT || 'mysql',
