@@ -1,17 +1,20 @@
-import React, { useState } from "react";
-import Login from "./pages/driver/Login";
-import DriverDashboard from "./pages/driver/DriverDashboard";
+// App.js
+import React, { useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import GDChinh from "./GDChinh";
+import RouteHistory from "./RouteHistory";
+import GD_Map from "./GD_Map";
+import GDHoSoCuaToi from "./GDHoSoCuaToi";
 
-const App = () => {
-  // const [loggedIn, setLoggedIn] = useState(false);
-
-  // return loggedIn ? (
-  //   <DriverDashboard />
-  // ) : (
-  //   <Login onLogin={() => setLoggedIn(true)} />
-  // );
-
-  return <DriverDashboard />;
-};
-
-export default App; 
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/GDChinh" element={<GDChinh />} />
+        <Route path="/history" element={<RouteHistory />} />
+        <Route path="/map" element={<GD_Map />} />
+        <Route path="/HoSoCuaToi" element={<GDHoSoCuaToi />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

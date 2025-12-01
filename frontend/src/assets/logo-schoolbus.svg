@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 64 64">
+  <rect rx="8" width="64" height="40" y="8" fill="#1976d2" />
+  <rect x="6" y="18" width="52" height="14" fill="#fff" rx="2" />
+  <circle cx="18" cy="48" r="4" fill="#212121" />
+  <circle cx="46" cy="48" r="4" fill="#212121" />
+  <rect x="8" y="22" width="10" height="8" fill="#1976d2" />
+  <rect x="22" y="22" width="20" height="8" fill="#1976d2" />
+  <path d="M40 10 L44 10 L44 14 L40 14 Z" fill="#fff" />
+  <text x="32" y="34" font-size="6" text-anchor="middle" fill="#1976d2" font-weight="700">SSB</text>
+</svg>
