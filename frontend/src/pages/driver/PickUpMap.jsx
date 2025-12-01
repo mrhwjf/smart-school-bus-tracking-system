@@ -39,11 +39,7 @@ import SubmitReport from "./SubmitReport";
 import SendAlert from "./SendAlert";
 
 // API Services
-import { getAssignedTripForDriver } from "../../service/tripService";
-import { getScheduleById } from "../../service/scheduleService";
-import { createPickupRecord} from "../../service/pickupRecordService";
-import { getAllStudents } from "../../service/studentService";
-
+import { getAssignedTripForDriver ,getScheduleById , createPickupRecord , getAllStudents  } from "../../service/userService";
 // ***************************************
 // 🔑 THÔNG TIN MAP/TILE (Leaflet/OSM)
 // ***************************************

@@ -11,7 +11,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Snackbar,
+
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
@@ -20,8 +20,7 @@ import BuildIcon from "@mui/icons-material/Build";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CloseIcon from "@mui/icons-material/Close";
-import { sendAlert } from "../../service/notificationService";
-import { getAllUsers } from "../../service/userService";
+import { getAllUsers , sendAlert } from "../../service/userService";
 
 const SendAlert = ({ onBack }) => {
   const [parents, setParents] = useState([]);

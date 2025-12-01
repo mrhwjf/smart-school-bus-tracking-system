@@ -15,10 +15,9 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonIcon from "@mui/icons-material/Person";
-import { getAssignedTripForDriver } from "../../service/tripService";
-import { getScheduleById } from "../../service/scheduleService";
-import { getAllStudents } from "../../service/studentService";
-import { getPickupRecords, updatePickupRecord } from "../../service/pickupRecordService";
+import { getAssignedTripForDriver ,getScheduleById ,getAllStudents ,getPickupRecords, updatePickupRecord } from "../../service/userService";
+
+
 
 const DRIVER_ID = 2;
 
@@ -103,7 +102,7 @@ const SubmitReport = ({ onBack }) => {
   // 🔹 Submit handler with API calls
   const handleSubmit = useCallback(async () => {
     const selected = students.filter((s) => s.checked);
-    if (!selected.length) return alert("Vui lòng chọn ít nhất 1 học sinh!");
+    
 
     setLoading(true);
     setError("");

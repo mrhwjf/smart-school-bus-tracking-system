@@ -17,7 +17,7 @@ const EditAccount = ({ onBack, driverData, busData }) => {
         driverId: driverData?.userId || "N/A",
         phone: driverData?.phoneNumber || "N/A",
         email: driverData?.email || "N/A",
-        avatar: driverData?.avatar || "https://i.pravatar.cc/150?img=3",
+        avatar: driverData?.avatar || "/default-avatar.png",
         licenseNumber: driverData?.driverInfo?.licenseNumber || "N/A",
         licensePlate: busData?.plateNumber || "N/A",
     });

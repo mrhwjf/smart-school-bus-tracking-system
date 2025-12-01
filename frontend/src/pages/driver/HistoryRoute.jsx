@@ -2,9 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Box, Typography, Card, CardContent, IconButton, CircularProgress } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TripDetails from "./TripDetails";
-import { getAllTrips } from "../../service/tripService";
-import { getRouteById } from "../../service/routeService";
-import { getSchedulesByDriverId } from "../../service/scheduleService";
+import { getAllTrips ,getRouteById , getSchedulesByDriverId } from "../../service/userService";
+
 
 const HistoryRoute = ({ onBack }) => {
   const [selectedTrip, setSelectedTrip] = useState(null);
