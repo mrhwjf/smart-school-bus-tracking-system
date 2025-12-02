@@ -39,7 +39,7 @@ import SubmitReport from "./SubmitReport";
 import SendAlert from "./SendAlert";
 
 // API Services
-import { getAssignedTripForDriver ,getScheduleById , createPickupRecord , getAllStudents , updateTrip } from "../../service/userService";
+import { getAssignedTripForDriver ,getScheduleById ,  getAllStudents , updateTrip ,updatePickupRecord, getPickupRecords   } from "../../service/userService";
 // ***************************************
 // 🔑 THÔNG TIN MAP/TILE (Leaflet/OSM)
 // ***************************************
@@ -153,6 +153,20 @@ const PickUpMap = ({ onTripComplete }) => {
           });
         }
 
+        // 3b. Fetch pickup_records to get recordId and status
+        const pickupRecordsResult = await getPickupRecords({ tripId: trip.tripId, size: 200 });
+        const pickupRecordsMap = {};
+        
+        if (pickupRecordsResult && pickupRecordsResult.success && pickupRecordsResult.data?.items) {
+          pickupRecordsResult.data.items.forEach(record => {
+            // Keep latest record for each student
+            const existing = pickupRecordsMap[record.studentId];
+            if (!existing || new Date(record.recordedAt) > new Date(existing.recordedAt)) {
+              pickupRecordsMap[record.studentId] = record;
+            }
+          });
+        }
+
         // 4. Transform stops data với student info đầy đủ
         const stops = route.stops
           .sort((a, b) => (a.stopOrder || 0) - (b.stopOrder || 0))
@@ -164,12 +178,14 @@ const PickUpMap = ({ onTripComplete }) => {
             lng: stop.longitude,
             students: (stop.students || []).map(s => {
               const studentData = studentsMap[s.studentId];
+              const pickupRecord = pickupRecordsMap[s.studentId];
               return {
                 id: s.studentId,
                 name: studentData?.name || 'N/A',
                 class: studentData?.class?.name || s.className || 'N/A',
                 phoneNumber: studentData?.parent?.phoneNumber || 'N/A',
-                checked: false,
+                checked: pickupRecord?.status === 'PICKED_UP',
+                recordId: pickupRecord?.recordId, // Store recordId for updates
               };
             }),
           }));
@@ -334,19 +350,15 @@ const PickUpMap = ({ onTripComplete }) => {
       prev.map((s) => (s.id === id ? { ...s, checked: newCheckedState } : s))
     );
 
-    // Gọi API để tạo hoặc cập nhật pickup record
+    // Gọi API để cập nhật pickup record
     try {
-      if (newCheckedState) {
-        // Check → Tạo PICKED_UP record
-        await createPickupRecord({
-          studentId: id,
-          stopId: currentStop.stop_id,
-          tripId: tripData.trip_id,
-          status: "PICKED_UP",
+      if (student.recordId) {
+        // Update existing record
+        await updatePickupRecord(student.recordId, {
+          status: newCheckedState ? "PICKED_UP" : "WAITING",
           recordedAt: new Date().toISOString(),
         });
       }
-      // Note: Nếu uncheck, có thể cần API để xóa hoặc update về WAITING
     } catch (error) {
       console.error("Error updating pickup record:", error);
       // Rollback UI nếu API fail
@@ -363,21 +375,20 @@ const PickUpMap = ({ onTripComplete }) => {
       setMissedStudents(notPicked);
       setOpenMissedDialog(true);
       
-      // Tạo MISSED records cho học sinh vắng
+      // Update MISSED records cho học sinh vắng
       try {
         await Promise.all(
-          notPicked.map(student =>
-            createPickupRecord({
-              studentId: student.id,
-              stopId: currentStop.stop_id,
-              tripId: tripData.trip_id,
-              status: "MISSED",
-              recordedAt: new Date().toISOString(),
-            })
-          )
+          notPicked
+            .filter(student => student.recordId) // Only update if recordId exists
+            .map(student =>
+              updatePickupRecord(student.recordId, {
+                status: "MISSED",
+                recordedAt: new Date().toISOString(),
+              })
+            )
         );
       } catch (error) {
-        console.error("Error creating MISSED records:", error);
+        console.error("Error updating MISSED records:", error);
       }
     } else {
       goToNextStop();
