@@ -83,7 +83,7 @@ export default function GDChinh() {
   // dropdown handlers
   const handleMenuItemClick = () => setSidebarOpen(true);
   const handleLogout = () => {
-    console.log("Logging out...");
+    navigate("/login");
   };
   const handleOpenDropdown = (e) => setAnchorEl(e.currentTarget);
   const handleCloseDropdown = () => setAnchorEl(null);

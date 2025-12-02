@@ -7,7 +7,6 @@ import GD_Map from "./GD_Map";
 import GDHoSoCuaToi from "./GDHoSoCuaToi";
 
 export default function App() {
-
   return (
     <BrowserRouter>
       <Routes>

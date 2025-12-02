@@ -11,6 +11,9 @@ function toRouteDto(route) {
 			? route.Stops.map(stop => {
 				const stopDto = toStopDto(stop);
 
+				// Add stopOrder from RouteStop junction table
+				stopDto.stopOrder = stop.RouteStop?.stop_order || 0;
+
 				// Map students from RoutePassengers
 				stopDto.students = stop.RoutePassengers
 					? stop.RoutePassengers.map(rp => {

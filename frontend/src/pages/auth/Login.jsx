@@ -62,10 +62,16 @@ export default function Login() {
         
         if (r === 'admin') {
           navigate('/')
-        } else {
+        } else if(r === 'parent'){
+          navigate('/HoSoCuaToi')
+        } else if (r === 'driver'){
+          navigate('/driver')
+        }
+         else {
           // Chưa có layout/route cho driver/parent → chuyển sang trang lỗi tạm thời
           navigate('/error')
-        }
+        } 
+        
       } catch (err) {
         console.error('login error', err)
           message.error(t('login.error'))
