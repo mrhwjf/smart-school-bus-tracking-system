@@ -6,6 +6,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { AdminService } from '../../api/services'
+import { getAllSchedules } from '../../api/scheduleService'
 import { useTranslation } from 'react-i18next'
 import TripFormDialog from '../../components/TripFormDialog'
 import ConfirmDialog from '../../components/ConfirmDialog'
@@ -28,22 +29,53 @@ export default function Schedules() {
     try {
       // Schedules page should show weekly schedules, not day trips
       const [schedules, routes, buses] = await Promise.all([
-        AdminService.listSchedules(),
+        getAllSchedules(),
         AdminService.listRoutes().catch(() => []),
         AdminService.listBuses().catch(() => []),
       ])
       const routeMap = new Map((Array.isArray(routes) ? routes : []).map((r) => [r.route_id ?? r.routeId, r]))
       const busMap = new Map((Array.isArray(buses) ? buses : []).map((b) => [b.bus_id ?? b.busId ?? b.id, b]))
-      const rows = (Array.isArray(schedules) ? schedules : []).map((s) => ({
-        trip_id: s.schedule_id, // use schedule_id as ID for the grid
-        route: routeMap.get(s.route_id) || null,
-        bus: busMap.get(s.bus_id) || null,
-        start_time: s.start_time,
-        end_time: s.end_time,
-        status: s.active ? 'SCHEDULED' : 'INACTIVE',
-        stops: (routeMap.get(s.route_id)?.stops) || [],
-        passengers: [],
-      }))
+      const rows = (Array.isArray(schedules) ? schedules : []).map((s) => {
+        const scheduleId = s.schedule_id ?? s.scheduleId ?? s.id
+        const routeId = s.route_id ?? s.routeId
+        const busId = s.bus_id ?? s.busId ?? s.id
+        const start = s.start_time ?? s.startTime
+        const end = s.end_time ?? s.endTime
+        const active = s.active
+        return {
+          trip_id: scheduleId, // use schedule_id as ID for the grid
+          route: routeMap.get(routeId) || null,
+          bus: busMap.get(busId) || null,
+          start_time: start,
+          end_time: end,
+          status: active === false ? 'INACTIVE' : 'SCHEDULED',
+          stops: (routeMap.get(routeId)?.stops) || [],
+          passengers: [],
+        }
+      })
+
+      // If routes list doesn't carry stops, fetch per-route stops and patch rows
+      const needRouteIds = [...new Set(rows
+        .filter((r) => (!r.stops || r.stops.length === 0) && (r.route?.route_id || r.route?.routeId))
+        .map((r) => r.route.route_id ?? r.route.routeId))]
+      if (needRouteIds.length > 0) {
+        const stopsMap = new Map()
+        await Promise.all(needRouteIds.map(async (rid) => {
+          try {
+            const st = await AdminService._getRouteStops(rid)
+            stopsMap.set(rid, Array.isArray(st) ? st : [])
+          } catch {
+            stopsMap.set(rid, [])
+          }
+        }))
+        rows.forEach((r) => {
+          const rid = r.route?.route_id ?? r.route?.routeId
+          if (rid && (!r.stops || r.stops.length === 0)) {
+            r.stops = stopsMap.get(rid) || []
+          }
+        })
+      }
+
       setRows(rows)
     } catch {
       notify.error(t('notify.error'))
@@ -107,20 +139,26 @@ export default function Schedules() {
   const formatDateTime = (value) => {
     if (!value) return '—'
     try {
+      // If backend returns only time like HH:mm or HH:mm:ss
+      if (typeof value === 'string') {
+        // Accept HH:mm, HH:mm:ss, HH:mm:ss.SSS, with optional Z or +07:00
+        const m = value.match(/^\s*(\d{2}):(\d{2})(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:?\d{2})?\s*$/)
+        if (m) return `${m[1]}:${m[2]}`
+        // Fallback: try to grab the first HH:mm at the start
+        const m2 = value.match(/^(\d{2}:\d{2})/)
+        if (m2) return m2[1]
+      }
       let date = new Date(value)
-      // Nếu date không hợp lệ, thử parse với timezone
+      // Nếu date không hợp lệ, thử parse với timezone hoặc common formats
       if (isNaN(date.getTime()) && typeof value === 'string') {
-        date = new Date(value.includes('Z') ? value : value + 'Z')
+        // Try 'YYYY-MM-DD HH:mm:ss'
+        const v = value.includes('T') ? value : value.replace(' ', 'T')
+        date = new Date(v.endsWith('Z') ? v : v + 'Z')
       }
       if (isNaN(date.getTime())) return '—'
 
-      return date.toLocaleString('vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      // Only show time (HH:mm) for this grid
+      return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     } catch {
       return '—'
     }
@@ -177,14 +215,18 @@ export default function Schedules() {
       headerName: t('startTime'),
       flex: 1,
       minWidth: 160,
-      valueFormatter: (params) => formatDateTime(params?.value)
+      renderCell: (params) => (
+        <Typography variant="body2">{formatDateTime(params?.row?.start_time ?? params?.row?.startTime)}</Typography>
+      )
     },
     {
       field: 'end_time',
       headerName: t('endTime'),
       flex: 1,
       minWidth: 160,
-      valueFormatter: (params) => formatDateTime(params?.value)
+      renderCell: (params) => (
+        <Typography variant="body2">{formatDateTime(params?.row?.end_time ?? params?.row?.endTime)}</Typography>
+      )
     },
     {
       field: 'status',

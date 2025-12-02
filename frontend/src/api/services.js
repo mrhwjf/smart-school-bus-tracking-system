@@ -84,19 +84,58 @@ export const AdminService = {
     const data = await api.get(`/routes/${routeId}/stops`).then((r) => {
       const d = r.data
       const arr = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-      return arr
-        .map((s) => ({
-          stop_id: s.stop_id ?? s.stopId ?? s.id,
-          name: s.name,
-          latitude: Number(s.latitude),
-          longitude: Number(s.longitude),
-          address: s.address ?? '',
+      const mapped = arr.map((s) => {
+        // Support both flat stop fields and nested { stop: {...} }
+        const stop = s.stop || s.Stop || null
+        return {
+          stop_id: s.stop_id ?? s.stopId ?? stop?.stopId ?? stop?.stop_id ?? s.id,
+          name: s.name ?? stop?.name ?? '',
+          latitude: Number(s.latitude ?? stop?.latitude),
+          longitude: Number(s.longitude ?? stop?.longitude),
+          address: (s.address ?? stop?.address) || '',
           stop_order: s.stop_order ?? s.stopOrder ?? s.seq_index ?? s.seqIndex ?? 0,
-        }))
-        .sort((a, b) => (a.stop_order ?? 0) - (b.stop_order ?? 0))
-    }).catch(() => [])
+        }
+      })
+      .filter((x) => typeof x.latitude === 'number' && typeof x.longitude === 'number')
+      .sort((a, b) => (a.stop_order ?? 0) - (b.stop_order ?? 0))
+      return mapped
+    }).catch(async () => {
+      // Fallback: get route detail which includes ordered stops
+      try {
+        const r2 = await api.get(`/routes/${routeId}`)
+        const route = r2?.data || {}
+        const stops = Array.isArray(route?.stops) ? route.stops : []
+        return stops
+          .map((s, idx) => ({
+            stop_id: s.stop_id ?? s.stopId ?? s.id,
+            name: s.name,
+            latitude: Number(s.latitude),
+            longitude: Number(s.longitude),
+            address: s.address ?? '',
+            stop_order: s.stop_order ?? s.stopOrder ?? idx,
+          }))
+          .sort((a, b) => (a.stop_order ?? 0) - (b.stop_order ?? 0))
+      } catch {
+        return []
+      }
+    })
     this._routeStopsCache.set(routeId, data)
     return data
+  },
+
+  /**
+   * Đơn giản: lấy toàn bộ schedules cho Tracking
+   * API: GET /schedules
+   * Trả về dữ liệu raw như backend (đã được interceptor unwrap nếu có)
+   */
+  async getAllSchedules() {
+    try {
+      const res = await api.get('/schedules')
+      return res.data
+    } catch (err) {
+      console.error('Lỗi khi fetch schedules:', err)
+      return null
+    }
   },
   async _getRoutePassengers(routeId) {
     if (!routeId) return []
@@ -276,181 +315,6 @@ export const AdminService = {
   },
 
   /**
-   * Lấy danh sách students với optional search query
-   * API: GET /students?q=search_term
-   * @param {string} q - Search query (tìm theo name)
-   * @returns {Promise<Array<Student>>} - Danh sách students đã normalize
-   */
-  async listStudents(q = '') {
-    return safeApi(
-      async () => {
-        const res = await api.get('/students', { params: q ? { q } : {} })
-        const d = res.data
-        const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
-        /**
-         * NORMALIZE DATA:
-         * Backend DTO (camelCase) → Frontend (snake_case)
-         * - studentId → student_id
-         * - parentId → parent_id
-         * - classId → class_id
-         * - dateOfBirth → date_of_birth
-         */
-        return items.map((it) => ({
-          student_id: it.studentId ?? it.student_id ?? it.id,
-          parent_id: it.parentId ?? it.parent_id,
-          class_id: it.classId ?? it.class_id,
-          name: it.name,
-          gender: it.gender,
-          date_of_birth: it.dateOfBirth ?? it.date_of_birth,
-          // Class name có thể nằm trong nested object hoặc flat field
-          class: it.class?.name ?? it.className ?? it.class,
-        }))
-      },
-      // Fallback: filter mock students theo name
-      () => students.filter((s) => s.name.toLowerCase().includes(q.toLowerCase())),
-    )
-  },
-
-  /**
-   * Tạo student mới
-   * API: POST /students
-   * @param {Object} input - Student data từ form
-   * @param {number} input.parent_id - Parent user ID
-   * @param {number} input.class_id - Class ID
-   * @param {string} input.name - Student name
-   * @param {string} input.gender - MALE|FEMALE|OTHER
-   * @param {string} input.date_of_birth - YYYY-MM-DD format
-   * @returns {Promise<Student>} - Created student
-   */
-  async createStudent(input) {
-    return safeApi(
-      async () => {
-        /**
-         * MAP FRONTEND → BACKEND:
-         * Frontend form có thể dùng snake_case hoặc camelCase
-         * Backend expect camelCase DTO
-         */
-        const payload = {
-          parentId: input.parentId ?? input.parent_id ?? input.parent,
-          classId: input.classId ?? input.class_id ?? input.class,
-          name: input.name,
-          gender: input.gender,
-          dateOfBirth: input.dateOfBirth ?? input.date_of_birth,
-        }
-        const res = await api.post('/students', payload)
-        return res.data
-      },
-      // Fallback: thêm vào mock array
-      () => {
-        const nextId = Math.max(0, ...students.map((s) => s.student_id)) + 1
-        const row = { student_id: nextId, ...input }
-        students.push(row)
-        return row
-      },
-    )
-  },
-
-  /**
-   * Cập nhật student
-   * API: PUT /students/:id
-   * @param {number} id - Student ID
-   * @param {Object} patch - Fields to update
-   * @returns {Promise<Student>} - Updated student
-   */
-  async updateStudent(id, patch) {
-    return safeApi(
-      async () => {
-        const payload = {
-          parentId: patch.parentId ?? patch.parent_id ?? patch.parent,
-          classId: patch.classId ?? patch.class_id ?? patch.class,
-          name: patch.name,
-          gender: patch.gender,
-          dateOfBirth: patch.dateOfBirth ?? patch.date_of_birth,
-        }
-        const res = await api.put(`/students/${id}`, payload)
-        return res.data
-      },
-      // Fallback: update mock array
-      () => {
-        const idx = students.findIndex((s) => s.student_id === id)
-        if (idx === -1) throw new Error('Student not found')
-        students[idx] = { ...students[idx], ...patch }
-        return students[idx]
-      },
-    )
-  },
-
-  /**
-   * Xóa student
-   * API: DELETE /students/:id
-   * @param {number} id - Student ID
-   * @returns {Promise<boolean>} - Success status
-   */
-  async deleteStudent(id) {
-    return safeApi(
-      async () => {
-        await api.delete(`/students/${id}`)
-        return true
-      },
-      // Fallback: xóa khỏi mock array
-      () => {
-        const idx = students.findIndex((s) => s.student_id === id)
-        if (idx >= 0) students.splice(idx, 1)
-        return true
-      },
-    )
-  },
-
-  /**
-   * Lấy danh sách drivers
-   * LƯU Ý: Backend không có endpoint /drivers riêng
-   * → Dùng /users?roleId=2 và lấy driverInfo từ response
-   * API: GET /users?roleId=2&page=0&size=100
-   * @param {string} q - Search query
-   * @returns {Promise<Array<Driver>>} - Danh sách drivers với license_number
-   */
-  async listDrivers(q = '') {
-    return safeApi(
-      async () => {
-        const userRes = await api.get('/users', { params: { roleId: 2, page: 0, size: 100 } })
-        const d = userRes.data
-        const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
-        
-        /**
-         * NORMALIZE DRIVER DATA:
-         * Backend có thể có nested driverInfo object
-         * - user.driverInfo.licenseNumber → license_number
-         */
-        const mapped = items.map((u) => ({
-          user_id: u.userId ?? u.user_id,
-          role_id: u.roleId ?? u.role_id,
-          name: u.name,
-          phone_number: u.phoneNumber ?? u.phone_number,
-          email: u.email,
-          is_active: !(u.locked === true), // locked = false → active = true
-          license_number: u.driverInfo?.licenseNumber ?? '',
-        }))
-        
-        // Filter theo search query
-        const s = q?.toLowerCase?.() || ''
-        return s ? mapped.filter((r) => String(r.name).toLowerCase().includes(s)) : mapped
-      },
-      // Fallback: join mock users và drivers tables
-      () => {
-        const driverUsers = users.filter((u) => u.role_id === 2)
-        return driverUsers
-          .map((u) => ({
-            ...u,
-            is_active: u.is_active ?? true,
-            license_number: drivers.find((d) => d.driver_id === u.user_id)?.license_number,
-          }))
-          .filter((d) => d.name.toLowerCase().includes(q.toLowerCase()))
-      },
-    )
-  },
-
-  /**
    * Lấy danh sách buses
    * API: GET /buses?q=search_term
    * @param {string} q - Search query (plate_number hoặc model)
@@ -552,77 +416,6 @@ export const AdminService = {
       () => {
         const idx = buses.findIndex((b) => b.bus_id === id)
         if (idx >= 0) buses.splice(idx, 1)
-        return true
-      },
-    )
-  },
-
-  /**
-   * Tạo driver mới
-   * API: POST /drivers
-   * @param {Object} input - Driver data (name, phone, email, license_number)
-   */
-  async createDriver(input) {
-    return safeApi(
-      async () => {
-        const res = await api.post('/drivers', input)
-        return res.data
-      },
-      () => {
-        const nextUserId = Math.max(0, ...users.map((u) => u.user_id)) + 1
-        const user = {
-          user_id: nextUserId,
-          role_id: 2, // DRIVER role
-          name: input.name,
-          phone_number: input.phone_number || '',
-          email: input.email || '',
-          is_active: input.is_active ?? true,
-        }
-        users.push(user)
-        drivers.push({ driver_id: nextUserId, license_number: input.license_number || '' })
-        return { ...user, license_number: input.license_number || '' }
-      },
-    )
-  },
-
-  /**
-   * Cập nhật driver
-   * API: PUT /drivers/:userId
-   */
-  async updateDriver(userId, patch) {
-    return safeApi(
-      async () => {
-        const res = await api.put(`/drivers/${userId}`, patch)
-        return res.data
-      },
-      () => {
-        const uidx = users.findIndex((u) => u.user_id === userId && u.role_id === 2)
-        if (uidx === -1) throw new Error('Driver not found')
-        users[uidx] = { ...users[uidx], ...patch }
-        const didx = drivers.findIndex((d) => d.driver_id === userId)
-        if (didx !== -1 && patch.license_number !== undefined) {
-          drivers[didx] = { ...drivers[didx], license_number: patch.license_number }
-        }
-        return { ...users[uidx], license_number: drivers.find((d) => d.driver_id === userId)?.license_number }
-      },
-    )
-  },
-
-  /**
-   * Xóa driver
-   * API: DELETE /drivers/:userId
-   */
-  async deleteDriver(userId) {
-    return safeApi(
-      async () => {
-        await api.delete(`/drivers/${userId}`)
-        return true
-      },
-      () => {
-        const uidx = users.findIndex((u) => u.user_id === userId && u.role_id === 2)
-        if (uidx >= 0) users.splice(uidx, 1)
-        const didx = drivers.findIndex((d) => d.driver_id === userId)
-        if (didx >= 0) drivers.splice(didx, 1)
         return true
       },
     )
@@ -1179,4 +972,9 @@ export const Realtime = {
     }
     return () => listeners.delete(cb) // Unsubscribe function
   },
+}
+
+// Helper export cho cách dùng đơn giản ở Tracking
+export async function getAllSchedules() {
+  return AdminService.getAllSchedules()
 }
