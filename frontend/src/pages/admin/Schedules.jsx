@@ -26,24 +26,25 @@ export default function Schedules() {
   const fetchTrips = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch trips, then enrich with routes and stops for display if missing
-      const [trips, routes] = await Promise.all([
-        AdminService.listTrips(),
+      // Schedules page should show weekly schedules, not day trips
+      const [schedules, routes, buses] = await Promise.all([
+        AdminService.listSchedules(),
         AdminService.listRoutes().catch(() => []),
+        AdminService.listBuses().catch(() => []),
       ])
-      const tripsArr = Array.isArray(trips) ? trips : []
       const routeMap = new Map((Array.isArray(routes) ? routes : []).map((r) => [r.route_id ?? r.routeId, r]))
-      const enriched = tripsArr.map((t) => {
-        const routeId = t.route?.route_id ?? t.route_id ?? t.routeId
-        const routeObj = t.route || routeMap.get(routeId) || null
-        const stopsArr = Array.isArray(t.stops) ? t.stops : (routeObj?.stops || [])
-        return {
-          ...t,
-          route: routeObj,
-          stops: stopsArr,
-        }
-      })
-      setRows(enriched)
+      const busMap = new Map((Array.isArray(buses) ? buses : []).map((b) => [b.bus_id ?? b.busId ?? b.id, b]))
+      const rows = (Array.isArray(schedules) ? schedules : []).map((s) => ({
+        trip_id: s.schedule_id, // use schedule_id as ID for the grid
+        route: routeMap.get(s.route_id) || null,
+        bus: busMap.get(s.bus_id) || null,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        status: s.active ? 'SCHEDULED' : 'INACTIVE',
+        stops: (routeMap.get(s.route_id)?.stops) || [],
+        passengers: [],
+      }))
+      setRows(rows)
     } catch {
       notify.error(t('notify.error'))
     } finally {

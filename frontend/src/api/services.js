@@ -75,6 +75,40 @@ const safeApi = async (fn, fallback) => {
 // ==============================================
 
 export const AdminService = {
+  // --- helpers (memoized) to fetch route-level resources ---
+  _routeStopsCache: new Map(),
+  _routePassengersCache: new Map(),
+  async _getRouteStops(routeId) {
+    if (!routeId) return []
+    if (this._routeStopsCache.has(routeId)) return this._routeStopsCache.get(routeId)
+    const data = await api.get(`/routes/${routeId}/stops`).then((r) => {
+      const d = r.data
+      const arr = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
+      return arr
+        .map((s) => ({
+          stop_id: s.stop_id ?? s.stopId ?? s.id,
+          name: s.name,
+          latitude: Number(s.latitude),
+          longitude: Number(s.longitude),
+          address: s.address ?? '',
+          stop_order: s.stop_order ?? s.stopOrder ?? s.seq_index ?? s.seqIndex ?? 0,
+        }))
+        .sort((a, b) => (a.stop_order ?? 0) - (b.stop_order ?? 0))
+    }).catch(() => [])
+    this._routeStopsCache.set(routeId, data)
+    return data
+  },
+  async _getRoutePassengers(routeId) {
+    if (!routeId) return []
+    if (this._routePassengersCache.has(routeId)) return this._routePassengersCache.get(routeId)
+    const data = await api.get(`/routes/${routeId}/passengers`).then((r) => {
+      const d = r.data
+      const arr = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
+      return arr
+    }).catch(() => [])
+    this._routePassengersCache.set(routeId, data)
+    return data
+  },
   /**
    * Authenticate user (dev fallback)
    * role: 'admin' | 'driver' | 'parent'
@@ -816,6 +850,34 @@ export const AdminService = {
               .map((tp) => students.find((s) => s.student_id === tp.student_id)),
           }
         }),
+    )
+  },
+
+  /**
+   * Lấy danh sách schedules (lịch lặp)
+   * API: GET /schedules
+   * Trả về items có: scheduleId, routeId, busId, driverId, shift, startTime, endTime, active
+   */
+  async listSchedules() {
+    return safeApi(
+      async () => {
+        const res = await api.get('/schedules')
+        const d = res.data
+        const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
+        // Normalize
+        return items.map((s) => ({
+          schedule_id: s.scheduleId ?? s.schedule_id ?? s.id,
+          route_id: s.routeId ?? s.route_id,
+          bus_id: s.busId ?? s.bus_id,
+          driver_id: s.driverId ?? s.driver_id,
+          shift: s.shift,
+          start_time: s.startTime ?? s.start_time,
+          end_time: s.endTime ?? s.end_time,
+          active: s.active,
+        }))
+      },
+      // No mock fallback in production
+      () => ([]),
     )
   },
 
