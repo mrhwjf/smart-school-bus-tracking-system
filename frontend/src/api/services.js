@@ -75,6 +75,79 @@ const safeApi = async (fn, fallback) => {
 // ==============================================
 
 export const AdminService = {
+  // --- helpers (memoized) to fetch route-level resources ---
+  _routeStopsCache: new Map(),
+  _routePassengersCache: new Map(),
+  async _getRouteStops(routeId) {
+    if (!routeId) return []
+    if (this._routeStopsCache.has(routeId)) return this._routeStopsCache.get(routeId)
+    const data = await api.get(`/routes/${routeId}/stops`).then((r) => {
+      const d = r.data
+      const arr = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
+      const mapped = arr.map((s) => {
+        // Support both flat stop fields and nested { stop: {...} }
+        const stop = s.stop || s.Stop || null
+        return {
+          stop_id: s.stop_id ?? s.stopId ?? stop?.stopId ?? stop?.stop_id ?? s.id,
+          name: s.name ?? stop?.name ?? '',
+          latitude: Number(s.latitude ?? stop?.latitude),
+          longitude: Number(s.longitude ?? stop?.longitude),
+          address: (s.address ?? stop?.address) || '',
+          stop_order: s.stop_order ?? s.stopOrder ?? s.seq_index ?? s.seqIndex ?? 0,
+        }
+      })
+      .filter((x) => typeof x.latitude === 'number' && typeof x.longitude === 'number')
+      .sort((a, b) => (a.stop_order ?? 0) - (b.stop_order ?? 0))
+      return mapped
+    }).catch(async () => {
+      // Fallback: get route detail which includes ordered stops
+      try {
+        const r2 = await api.get(`/routes/${routeId}`)
+        const route = r2?.data || {}
+        const stops = Array.isArray(route?.stops) ? route.stops : []
+        return stops
+          .map((s, idx) => ({
+            stop_id: s.stop_id ?? s.stopId ?? s.id,
+            name: s.name,
+            latitude: Number(s.latitude),
+            longitude: Number(s.longitude),
+            address: s.address ?? '',
+            stop_order: s.stop_order ?? s.stopOrder ?? idx,
+          }))
+          .sort((a, b) => (a.stop_order ?? 0) - (b.stop_order ?? 0))
+      } catch {
+        return []
+      }
+    })
+    this._routeStopsCache.set(routeId, data)
+    return data
+  },
+
+  /**
+   * Đơn giản: lấy toàn bộ schedules cho Tracking
+   * API: GET /schedules
+   * Trả về dữ liệu raw như backend (đã được interceptor unwrap nếu có)
+   */
+  async getAllSchedules() {
+    try {
+      const res = await api.get('/schedules')
+      return res.data
+    } catch (err) {
+      console.error('Lỗi khi fetch schedules:', err)
+      return null
+    }
+  },
+  async _getRoutePassengers(routeId) {
+    if (!routeId) return []
+    if (this._routePassengersCache.has(routeId)) return this._routePassengersCache.get(routeId)
+    const data = await api.get(`/routes/${routeId}/passengers`).then((r) => {
+      const d = r.data
+      const arr = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
+      return arr
+    }).catch(() => [])
+    this._routePassengersCache.set(routeId, data)
+    return data
+  },
   /**
    * Authenticate user (dev fallback)
    * role: 'admin' | 'driver' | 'parent'
@@ -525,77 +598,6 @@ export const AdminService = {
   },
 
   /**
-   * Tạo driver mới
-   * API: POST /drivers
-   * @param {Object} input - Driver data (name, phone, email, license_number)
-   */
-  async createDriver(input) {
-    return safeApi(
-      async () => {
-        const res = await api.post('/drivers', input)
-        return res.data
-      },
-      () => {
-        const nextUserId = Math.max(0, ...users.map((u) => u.user_id)) + 1
-        const user = {
-          user_id: nextUserId,
-          role_id: 2, // DRIVER role
-          name: input.name,
-          phone_number: input.phone_number || '',
-          email: input.email || '',
-          is_active: input.is_active ?? true,
-        }
-        users.push(user)
-        drivers.push({ driver_id: nextUserId, license_number: input.license_number || '' })
-        return { ...user, license_number: input.license_number || '' }
-      },
-    )
-  },
-
-  /**
-   * Cập nhật driver
-   * API: PUT /drivers/:userId
-   */
-  async updateDriver(userId, patch) {
-    return safeApi(
-      async () => {
-        const res = await api.put(`/drivers/${userId}`, patch)
-        return res.data
-      },
-      () => {
-        const uidx = users.findIndex((u) => u.user_id === userId && u.role_id === 2)
-        if (uidx === -1) throw new Error('Driver not found')
-        users[uidx] = { ...users[uidx], ...patch }
-        const didx = drivers.findIndex((d) => d.driver_id === userId)
-        if (didx !== -1 && patch.license_number !== undefined) {
-          drivers[didx] = { ...drivers[didx], license_number: patch.license_number }
-        }
-        return { ...users[uidx], license_number: drivers.find((d) => d.driver_id === userId)?.license_number }
-      },
-    )
-  },
-
-  /**
-   * Xóa driver
-   * API: DELETE /drivers/:userId
-   */
-  async deleteDriver(userId) {
-    return safeApi(
-      async () => {
-        await api.delete(`/drivers/${userId}`)
-        return true
-      },
-      () => {
-        const uidx = users.findIndex((u) => u.user_id === userId && u.role_id === 2)
-        if (uidx >= 0) users.splice(uidx, 1)
-        const didx = drivers.findIndex((d) => d.driver_id === userId)
-        if (didx >= 0) drivers.splice(didx, 1)
-        return true
-      },
-    )
-  },
-
-  /**
    * Lấy danh sách routes với stops
    * API: GET /routes, GET /stops
    * LƯU Ý: Nếu routes không include stops, phải fetch riêng và join
@@ -817,6 +819,34 @@ export const AdminService = {
               .map((tp) => students.find((s) => s.student_id === tp.student_id)),
           }
         }),
+    )
+  },
+
+  /**
+   * Lấy danh sách schedules (lịch lặp)
+   * API: GET /schedules
+   * Trả về items có: scheduleId, routeId, busId, driverId, shift, startTime, endTime, active
+   */
+  async listSchedules() {
+    return safeApi(
+      async () => {
+        const res = await api.get('/schedules')
+        const d = res.data
+        const items = Array.isArray(d) ? d : (Array.isArray(d?.items) ? d.items : [])
+        // Normalize
+        return items.map((s) => ({
+          schedule_id: s.scheduleId ?? s.schedule_id ?? s.id,
+          route_id: s.routeId ?? s.route_id,
+          bus_id: s.busId ?? s.bus_id,
+          driver_id: s.driverId ?? s.driver_id,
+          shift: s.shift,
+          start_time: s.startTime ?? s.start_time,
+          end_time: s.endTime ?? s.end_time,
+          active: s.active,
+        }))
+      },
+      // No mock fallback in production
+      () => ([]),
     )
   },
 
@@ -1143,4 +1173,9 @@ export const Realtime = {
     }
     return () => listeners.delete(cb) // Unsubscribe function
   },
+}
+
+// Helper export cho cách dùng đơn giản ở Tracking
+export async function getAllSchedules() {
+  return AdminService.getAllSchedules()
 }

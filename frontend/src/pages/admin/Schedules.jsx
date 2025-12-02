@@ -36,9 +36,9 @@ export default function Schedules() {
   const fetchTrips = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch trips, then enrich with routes and stops for display if missing
-      const [trips, routes] = await Promise.all([
-        AdminService.listTrips(),
+      // Schedules page should show weekly schedules, not day trips
+      const [schedules, routes, buses] = await Promise.all([
+        getAllSchedules(),
         AdminService.listRoutes().catch(() => []),
       ]);
       const tripsArr = Array.isArray(trips) ? trips : [];
