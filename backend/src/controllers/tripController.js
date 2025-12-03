@@ -123,10 +123,19 @@ async function deletePickupRecord(req, res, next) {
 	} catch (err) { next(err); }
 }
 
+async function getAllByParentId(req, res, next) {
+	try {
+		const { parentId } = req.params;
+		const result = await tripService.getAllByParentId(Number(parentId));
+		res.json(result);
+	} catch (err) { next(err); }
+}
+
 module.exports = {
 	handleValidation,
 	// Trips
 	listTrips, getTrip, createTrip, updateTrip, deleteTrip,
 	// Pickup records
 	listPickupRecords, createPickupRecord, updatePickupRecord, getPickupRecord, deletePickupRecord,
+	getAllByParentId,
 };

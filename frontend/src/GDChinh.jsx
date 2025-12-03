@@ -32,6 +32,7 @@ import { useNavigate } from "react-router-dom";
 import { blue } from "@mui/material/colors";
 import { getAllUsers } from "./services/userService";
 import { getAllStudents } from "./services/studentService";
+import { getStudentsByParent } from "./services/studentService";
 /**
  * GDChinh with dropdown selector for multiple students.
  * - Dropdown arrow is top-left (inside AppBar).
@@ -42,27 +43,44 @@ export default function GDChinh() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null); // dropdown anchor
   const open = Boolean(anchorEl);
-  const theme = useTheme();
   const navigate = useNavigate();
 
   const [students, setStudents] = React.useState([]);
   const [loading, setLoading] = useState(true);
   const [currentStudentId, setCurrentStudentId] = useState(null);
 
+  const authUserRaw = localStorage.getItem("authUser");
+  const authUser = authUserRaw ? JSON.parse(authUserRaw) : null;
+
+   const parentId =
+    authUser?.user?.user_id ??
+    authUser?.user?.id ??
+    authUser?.id ??
+    authUser?.userId ??
+    null;
+  const token = authUser?.token ?? authUser?.accessToken ?? null;
+
   useEffect(() => {
+    if (!parentId) {
+      // not logged in - go to login
+      navigate("/login");
+      return;
+    }
+
     let mounted = true;
     async function load() {
       try {
         setLoading(true);
-        const res = await getAllStudents();
-        const items = res?.data?.items ?? [];
+        const items = await getStudentsByParent(parentId, token);
         if (!mounted) return;
-        setStudents(items);
-        // choose default: prefer studentId === 1, else first item
-        if (items.length > 0) {
-          const prefer =
-            items.find((s) => String(s.studentId) === "1") || items[0];
-          setCurrentStudentId(prefer.studentId ?? prefer.studentId);
+        setStudents(items || []);
+        if (items && items.length > 0) {
+          // select first if none selected
+          setCurrentStudentId((prev) =>
+            prev ? prev : String(items[0].studentId ?? items[0].id)
+          );
+        } else {
+          setCurrentStudentId(null);
         }
       } catch (err) {
         console.error("Load students failed:", err);
@@ -75,7 +93,8 @@ export default function GDChinh() {
     return () => {
       mounted = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentId]);
   // state: current selected student
   const student =
     students.find((s) => String(s.studentId) === String(currentStudentId)) ??
@@ -88,10 +107,9 @@ export default function GDChinh() {
   const handleOpenDropdown = (e) => setAnchorEl(e.currentTarget);
   const handleCloseDropdown = () => setAnchorEl(null);
   const handleSelectStudent = (id) => {
-    setCurrentStudentId(id);
-    handleCloseDropdown();
+    setCurrentStudentId(String(id));
+    setAnchorEl(null);
   };
-
   // safe initials for avatar
   const initials = student?.name
     ? student.name

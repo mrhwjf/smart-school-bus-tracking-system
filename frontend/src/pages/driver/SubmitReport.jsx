@@ -15,7 +15,7 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonIcon from "@mui/icons-material/Person";
-import { getAssignedTripForDriver ,getScheduleById ,getAllStudents ,getPickupRecords, updatePickupRecord } from "../../service/userService";
+import { getAssignedTripForDriver ,getScheduleById ,getAllStudents ,getPickupRecords, updatePickupRecord, createPickupRecord } from "../../service/userService";
 
 const SubmitReport = ({ onBack }) => {
   const [students, setStudents] = useState([]);
@@ -62,6 +62,13 @@ const SubmitReport = ({ onBack }) => {
       const scheduleResult = await getScheduleById(trip.scheduleId);
       const route = scheduleResult.data.route;
 
+      console.log('🔍 Route stops:', route.stops.map(s => ({ 
+        stopId: s.stopId, 
+        name: s.name,
+        stopOrder: s.stopOrder || s.RouteStop?.stopOrder || s.RouteStop?.stop_order,
+        students: s.students?.map(st => st.studentId)
+      })));
+
       const studentsResult = await getAllStudents();
       const studentsMap = {};
       if (studentsResult?.success && studentsResult.data?.items) {
@@ -85,6 +92,39 @@ const SubmitReport = ({ onBack }) => {
         });
       }
 
+      // Build a map of studentId -> their last stop (drop-off point)
+      // Sort stops by stopOrder to find the final destination (usually school)
+      const sortedStops = [...route.stops].sort((a, b) => {
+        const orderA = a.stopOrder || a.RouteStop?.stopOrder || a.RouteStop?.stop_order || 0;
+        const orderB = b.stopOrder || b.RouteStop?.stopOrder || b.RouteStop?.stop_order || 0;
+        return orderA - orderB;
+      });
+      
+      console.log('📍 Sorted stops:', sortedStops.map(s => ({ 
+        stopId: s.stopId, 
+        order: s.stopOrder || s.RouteStop?.stopOrder || s.RouteStop?.stop_order 
+      })));
+      
+      // Get the final stop in the route (highest stopOrder) - this is the drop-off point (school)
+      const finalStop = sortedStops[sortedStops.length - 1];
+      const finalStopId = finalStop?.stopId;
+      
+      // Collect all unique studentIds from all stops in this route
+      const allStudentIds = new Set();
+      route.stops.forEach(stop => {
+        (stop.students || []).forEach(s => {
+          allStudentIds.add(s.studentId);
+        });
+      });
+      
+      // Map all students to the final stop (drop-off point)
+      const studentLastStopMap = {};
+      allStudentIds.forEach(studentId => {
+        studentLastStopMap[studentId] = finalStopId;
+      });
+      
+      console.log('🎯 Student last stops:', studentLastStopMap);
+
       const studentsList = [];
       route.stops.forEach(stop => {
         (stop.students || []).forEach(s => {
@@ -100,6 +140,8 @@ const SubmitReport = ({ onBack }) => {
               phoneNumber: studentData.parent?.phoneNumber || 'N/A',
               checked: pickupRecord.status === 'PICKED_UP', // Show as checked if PICKED_UP
               status: pickupRecord.status, // Store actual status from DB
+              lastStopId: studentLastStopMap[s.studentId], // Store last stop for drop-off
+              tripId: trip.tripId, // Store tripId for creating new record
             });
           }
         });
@@ -131,23 +173,30 @@ const SubmitReport = ({ onBack }) => {
 
     try {
       // Update pickup_records based on checkbox state:
-      // - checked (PICKED_UP) → DROPPED_OFF
-      // - unchecked (WAITING/MISSED) → MISSED
+      // - checked (PICKED_UP) → CREATE new record with DROPPED_OFF at last stop
+      // - unchecked (WAITING/MISSED) → UPDATE to MISSED
+      
+      // Get current time in local timezone (GMT+7)
+      const now = new Date();
+      const localTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+      
       const updatePromises = students.map(student => {
-        let newStatus;
-        
         if (student.checked) {
-          // If checked, means PICKED_UP → change to DROPPED_OFF
-          newStatus = 'DROPPED_OFF';
+          // If checked, means PICKED_UP → CREATE new record for DROPPED_OFF
+          return createPickupRecord({
+            studentId: student.id,
+            stopId: student.lastStopId, // Điểm dừng cuối cùng
+            tripId: student.tripId,
+            status: 'DROPPED_OFF',
+            recordedAt: localTime,
+          });
         } else {
-          // If unchecked, means not picked up → MISSED
-          newStatus = 'MISSED';
+          // If unchecked, means not picked up → UPDATE to MISSED
+          return updatePickupRecord(student.recordId, {
+            status: 'MISSED',
+            recordedAt: localTime,
+          });
         }
-
-        return updatePickupRecord(student.recordId, {
-          status: newStatus,
-          recordedAt: new Date().toISOString(),
-        });
       });
 
       await Promise.all(updatePromises);

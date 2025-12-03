@@ -10,14 +10,19 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
-import { AdminService, Realtime } from "../../api/services";
+import { AdminService, Realtime, SimulationService } from "../../api/services";
+import socketService from "../../api/socket";
 import { getDirections } from "../../api/ors";
-import { Paper, Typography, Box, Chip } from "@mui/material";
+import { Paper, Typography, Box, Chip, Button, Stack } from "@mui/material";
 import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import StopIcon from "@mui/icons-material/Stop";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useTranslation } from "react-i18next";
 import { StatusChip } from "../../utils/status";
 import VehicleList from "../../components/VehicleList";
+import SimulationControl from "../../components/SimulationControl";
+import { useSimulationSync } from "../../hooks/useSimulationSync";
 
 const BusIcon = L.divIcon({
   html: renderToStaticMarkup(<DirectionsBusIcon sx={{ color: "#1976d2" }} />),
@@ -65,25 +70,220 @@ export default function Tracking() {
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all"); // all | onTime | delayed | stale
+  const [routeGeojson, setRouteGeojson] = useState(null);
+  const [orsCoordinates, setOrsCoordinates] = useState(new Map()); // tripId -> coordinates
+  const [orsDataReady, setOrsDataReady] = useState(false); // Track if ORS data is loaded
+  const [simLoading, setSimLoading] = useState(false);
   const { t } = useTranslation();
+  const { isRunning, activeCount, startSimulation, stopSimulation } = useSimulationSync();
   const mapRef = useRef(null);
+  const tripsRef = useRef([]); // Store trips for simulation
+  
   useEffect(() => {
     let mounted = true;
-    // Load trips first to know which buses are valid from DB
-    AdminService.listTrips().then((tripData) => {
+    
+    // Connect WebSocket
+    socketService.connect();
+    
+    // Subscribe to bus location updates
+    const unsubLocation = socketService.on('bus:location', (location) => {
       if (!mounted) return;
-      const tripsArr = Array.isArray(tripData) ? tripData : [];
-      setTrips(tripsArr);
-      const validBusIds = new Set(
-        tripsArr.map((t) => t.bus?.bus_id).filter(Boolean)
-      );
-      // Load bus locations and keep only buses present in trips
-      AdminService.listBusLocations().then((locs) => {
-        if (!mounted) return;
-        const arr = Array.isArray(locs) ? locs : [];
-        const filtered = arr.filter((b) => validBusIds.has(b.bus_id));
-        setBuses(filtered);
+      
+      setBuses((prev) => {
+        const index = prev.findIndex((b) => b.bus_id === location.bus_id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = { ...next[index], ...location };
+          return next;
+        } else {
+          return [...prev, location];
+        }
       });
+    });
+
+    // Subscribe to all locations
+    const unsubLocations = socketService.on('bus:locations', (locations) => {
+      if (!mounted) return;
+      setBuses((prev) => {
+        const updated = [...prev];
+        locations.forEach((loc) => {
+          const index = updated.findIndex((b) => b.bus_id === loc.bus_id);
+          if (index >= 0) {
+            updated[index] = { ...updated[index], ...loc };
+          } else {
+            updated.push(loc);
+          }
+        });
+        return updated;
+      });
+    });
+    
+    // Load trips and routes concurrently
+    Promise.all([
+      AdminService.listTrips(),
+      AdminService.listRoutes()
+    ]).then(async ([tripData, routesData]) => {
+      if (!mounted) return;
+      
+      // Parse trips
+      const items = tripData?.items || tripData?.data?.items || (Array.isArray(tripData) ? tripData : []);
+      console.log('Trips loaded:', items.length, items[0]); // Debug
+      
+      // Parse routes with stops
+      const routes = Array.isArray(routesData) ? routesData : [];
+      console.log('Routes loaded:', routes.length, routes[0]); // Debug
+      
+      // Enrich trips with stops from routes
+      const enrichedTrips = items.map(trip => {
+        const routeId = trip.route?.route_id || trip.route?.routeId || trip.routeId;
+        const route = routes.find(r => (r.route_id || r.routeId) === routeId);
+        
+        // Normalize stops data
+        let stops = trip.stops || [];
+        if (stops.length === 0 && route?.stops) {
+          stops = route.stops;
+        }
+        
+        // Ensure stops have correct field names
+        stops = stops.map(s => ({
+          stop_id: s.stop_id || s.stopId,
+          name: s.name,
+          latitude: parseFloat(s.latitude),
+          longitude: parseFloat(s.longitude),
+          address: s.address,
+          stop_order: s.stop_order || s.seq_index || 0
+        })).sort((a, b) => a.stop_order - b.stop_order);
+        
+        return {
+          ...trip,
+          stops,
+          route: trip.route || route
+        };
+      });
+      
+      console.log('Enriched trips with stops:', enrichedTrips[0]?.stops?.length, 'stops'); // Debug
+      setTrips(enrichedTrips);
+      tripsRef.current = enrichedTrips; // Store for later use
+      
+      // Extract buses from trips
+      const busesFromTrips = enrichedTrips
+        .filter(t => t.bus)
+        .map(t => ({
+          bus_id: t.bus.bus_id || t.bus.busId,
+          plate_number: t.bus.plate_number || t.bus.plateNumber,
+          status: t.bus.status,
+          capacity: t.bus.capacity,
+          // Initial mock location (sẽ được realtime update)
+          latitude: 10.78 + (Math.random() - 0.5) * 0.05,
+          longitude: 106.695 + (Math.random() - 0.5) * 0.05,
+          recorded_at: new Date().toISOString()
+        }));
+      
+      console.log('Buses extracted:', busesFromTrips.length); // Debug
+      setBuses(busesFromTrips);
+      
+      // 🔥 Fetch ORS routes cho tất cả trips trước
+      const orsPromises = enrichedTrips.map(async (trip) => {
+        const stops = trip.stops?.filter(
+          (s) => typeof s.latitude === "number" && typeof s.longitude === "number"
+        ) || [];
+        
+        if (stops.length < 2) return null;
+        
+        try {
+          const coords = stops.map((s) => [s.longitude, s.latitude]);
+          const geo = await getDirections(coords, "driving-car", { instructions: false });
+          
+          // Extract coordinates từ GeoJSON
+          if (geo?.features?.[0]?.geometry?.coordinates) {
+            const orsCoords = geo.features[0].geometry.coordinates.map(([lng, lat]) => ({
+              latitude: lat,
+              longitude: lng
+            }));
+            return { tripId: trip.trip_id, coordinates: orsCoords };
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch ORS route for trip ${trip.trip_id}:`, err.message);
+        }
+        return null;
+      });
+      
+      const orsResults = await Promise.all(orsPromises);
+      const orsMap = new Map();
+      orsResults.forEach(result => {
+        if (result) orsMap.set(result.tripId, result.coordinates);
+      });
+      setOrsCoordinates(orsMap);
+      
+      console.log(`ORS fetched: ${orsMap.size} routes with coordinates`); // Debug
+      setOrsDataReady(true); // Mark ORS data as ready
+      
+      // KHÔNG tự động start simulation - chờ user nhấn nút
+      // Nếu có simulation đang chạy từ tab khác, start lại
+      const storedRunning = localStorage.getItem('simulation_running');
+      if (storedRunning === 'true') {
+        console.log('⚡ Simulation running from another tab, restarting...');
+        setTimeout(() => {
+          handleStartSimulations(enrichedTrips, orsMap);
+        }, 1000);
+      }
+      
+      /*
+      // Code cũ - auto start
+      // 🛑 Dừng tất cả simulations cũ trước khi start mới
+      try {
+        await SimulationService.stopAllSimulations();
+        console.log('✓ Stopped all old simulations');
+        // Đợi 1 giây để backend cleanup
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        console.warn('Failed to stop old simulations:', err.message);
+      }
+      
+      // 🚀 Tự động bắt đầu simulation cho tất cả trips với ORS coordinates
+      enrichedTrips.forEach(trip => {
+        if (!trip.trip_id) return;
+        
+        const busId = trip.bus?.bus_id || trip.bus?.busId;
+        if (!busId) return;
+        
+        // Ưu tiên dùng ORS coordinates, fallback về stops
+        const routeCoords = orsMap.get(trip.trip_id);
+        
+        if (!routeCoords) {
+          console.warn(`Trip ${trip.trip_id}: No ORS route found, using stops fallback`);
+          const stopCoords = trip.stops?.map(s => ({
+            latitude: s.latitude,
+            longitude: s.longitude,
+            name: s.name
+          })) || [];
+          
+          if (stopCoords.length >= 2) {
+            SimulationService.startSimulationWithRoute(busId, stopCoords, 30)
+              .then(() => {
+                console.log(`✓ Started simulation for trip ${trip.trip_id} with ${stopCoords.length} stops (fallback)`);
+              })
+              .catch(err => {
+                console.error(`✗ Failed to start simulation for trip ${trip.trip_id}:`, err.message);
+              });
+          }
+          return;
+        }
+        
+        console.log(`Starting simulation for trip ${trip.trip_id} with ${routeCoords.length} ORS waypoints`); // Debug
+        
+        // Gọi API với ORS route coordinates
+        SimulationService.startSimulationWithRoute(busId, routeCoords, 30)
+          .then(() => {
+            console.log(`✓ Auto-started simulation for trip ${trip.trip_id} with ${routeCoords.length} ORS waypoints`);
+          })
+          .catch(err => {
+            console.error(`✗ Failed to start simulation for trip ${trip.trip_id}:`, err.message);
+          });
+      });
+      */
+    }).catch(err => {
+      console.error('Error loading tracking data:', err);
     });
 
     // Batch realtime updates every ~200ms to reduce re-renders
@@ -118,44 +318,160 @@ export default function Tracking() {
       mounted = false;
       clearInterval(interval);
       unsub?.();
+      unsubLocation();
+      unsubLocations();
+      // Don't disconnect socket - might be used by other components
     };
   }, []);
+  
+  // Handler để start simulations khi nhấn nút
+  const handleStartSimulations = async (tripsData = null, orsMap = null) => {
+    setSimLoading(true);
+    
+    try {
+      const tripsToUse = tripsData || tripsRef.current;
+      const orsToUse = orsMap || orsCoordinates;
+      
+      if (tripsToUse.length === 0) {
+        console.warn('No trips available');
+        return;
+      }
+      
+      // Stop all old simulations first
+      await SimulationService.stopAllSimulations();
+      console.log('✓ Stopped all old simulations');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Start simulations
+      let successCount = 0;
+      const promises = tripsToUse.map(async (trip) => {
+        if (!trip.trip_id) return;
+        
+        const busId = trip.bus?.bus_id || trip.bus?.busId;
+        if (!busId) return;
+        
+        // Ưu tiên dùng ORS coordinates, fallback về stops
+        const routeCoords = orsToUse.get(trip.trip_id);
+        
+        try {
+          if (!routeCoords) {
+            // Fallback về stops
+            const stopCoords = trip.stops?.map(s => ({
+              latitude: s.latitude,
+              longitude: s.longitude,
+              name: s.name
+            })) || [];
+            
+            if (stopCoords.length >= 2) {
+              await SimulationService.startSimulationWithRoute(busId, stopCoords, 30);
+              console.log(`✓ Started simulation for trip ${trip.trip_id} with ${stopCoords.length} stops (fallback)`);
+              successCount++;
+            }
+          } else {
+            await SimulationService.startSimulationWithRoute(busId, routeCoords, 30);
+            console.log(`✓ Started simulation for trip ${trip.trip_id} with ${routeCoords.length} ORS waypoints`);
+            successCount++;
+          }
+        } catch (err) {
+          console.error(`✗ Failed to start simulation for trip ${trip.trip_id}:`, err.message);
+        }
+      });
+      
+      await Promise.all(promises);
+      
+      console.log(`🚀 Started ${successCount} simulations`);
+      startSimulation(successCount); // Update sync state
+    } catch (err) {
+      console.error('Failed to start simulations:', err);
+    } finally {
+      setSimLoading(false);
+    }
+  };
+  
+  // Handler để stop simulations
+  const handleStopSimulations = async () => {
+    setSimLoading(true);
+    
+    try {
+      await SimulationService.stopAllSimulations();
+      console.log('🛑 Stopped all simulations');
+      stopSimulation(); // Update sync state
+    } catch (err) {
+      console.error('Failed to stop simulations:', err);
+    } finally {
+      setSimLoading(false);
+    }
+  };
+  
   const center = [10.78, 106.695];
   const selectedBus = buses.find((b) => b.bus_id === selectedId) || buses[0];
-  const selectedTrip = trips.find((t) => t.bus?.bus_id === selectedBus?.bus_id);
+  const selectedTrip = trips.find((t) => (t.bus?.bus_id || t.bus?.busId) === selectedBus?.bus_id);
   const polyline = (selectedTrip?.stops || [])
     .filter(
       (s) => typeof s.latitude === "number" && typeof s.longitude === "number"
     )
     .map((s) => [s.latitude, s.longitude]);
 
-  const [routeGeojson, setRouteGeojson] = useState(null);
-
   // Fetch ORS directions for the selected trip stops (if available)
   useEffect(() => {
     let mounted = true;
     setRouteGeojson(null);
+    
+    // Nếu đã có ORS coordinates từ lúc load, dùng luôn
+    if (selectedTrip?.trip_id && orsCoordinates.has(selectedTrip.trip_id)) {
+      const coords = orsCoordinates.get(selectedTrip.trip_id);
+      if (coords && coords.length > 0) {
+        // Convert sang GeoJSON format
+        const geojson = {
+          type: "FeatureCollection",
+          features: [{
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: coords.map(c => [c.longitude, c.latitude])
+            },
+            properties: {}
+          }]
+        };
+        setRouteGeojson(geojson);
+        return;
+      }
+    }
+    
     const stops = (selectedTrip?.stops || []).filter(
       (s) => typeof s.latitude === "number" && typeof s.longitude === "number"
     );
-    if (!stops || stops.length < 2) return;
+    
+    if (!stops || stops.length < 2) {
+      console.log('ORS: Không đủ điểm dừng để vẽ đường', stops?.length || 0);
+      return;
+    }
+    
     (async () => {
       try {
         // ORS expects [lng, lat]
         const coords = stops.map((s) => [s.longitude, s.latitude]);
+        console.log('ORS: Fetching route for', coords.length, 'stops');
+        
         const geo = await getDirections(coords, "driving-car", {
           instructions: false,
         });
-        if (mounted && geo) setRouteGeojson(geo);
+        
+        console.log('ORS: Route received', geo);
+        if (mounted && geo) {
+          setRouteGeojson(geo);
+        }
       } catch (err) {
-        console.error("ORS directions error:", err);
+        console.error("ORS directions error:", err?.response?.data || err?.message || err);
+        // Fallback: nếu ORS fail, vẫn hiển thị polyline thẳng
+        console.log('ORS: Sử dụng polyline fallback');
       }
     })();
 
     return () => {
       mounted = false;
     };
-  }, [selectedTrip]);
+  }, [selectedTrip, orsCoordinates]);
 
   // Prepare faint polylines for other trips to give context
   const otherTripPolylines = trips
@@ -200,7 +516,9 @@ export default function Tracking() {
   })();
 
   const computePunctuality = (trip, bus) => {
-    const startM = minutesFromIso(trip?.start_time);
+    // Use startTime from trip (which comes from schedule)
+    const startTimeStr = trip?.startTime || trip?.start_time;
+    const startM = minutesFromIso(startTimeStr);
     if (startM == null || !bus?.latitude)
       return { label: "—", color: "default" };
     const nowM = minutesNow();
@@ -219,7 +537,16 @@ export default function Tracking() {
 
   const fleetRaw = trips
     .map((t) => {
-      const b = buses.find((x) => x.bus_id === t.bus?.bus_id);
+      // Backend now returns bus data directly in trip
+      const busId = t.bus?.bus_id || t.bus?.busId;
+      const b = buses.find((x) => x.bus_id === busId) || {
+        bus_id: busId,
+        plate_number: t.bus?.plate_number || t.bus?.plateNumber,
+        status: t.bus?.status,
+        capacity: t.bus?.capacity,
+        latitude: null,
+        longitude: null
+      };
       const pun = computePunctuality(t, b);
       // derive status meta based on staleness
       let statusMeta = null;
@@ -240,7 +567,7 @@ export default function Tracking() {
       }
       return { trip: t, bus: b, punctuality: pun, statusMeta };
     })
-    .filter((x) => x.bus);
+    .filter((x) => x.trip.bus);
 
   const fleetFiltered = fleetRaw.filter(({ trip, bus, statusMeta }) => {
     const q = (query || "").toLowerCase();
@@ -254,9 +581,18 @@ export default function Tracking() {
   });
   return (
     <>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
-        {t("tracking")}
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          {t("tracking")}
+        </Typography>
+        <SimulationControl 
+          isRunning={isRunning}
+          activeCount={activeCount}
+          onStart={() => handleStartSimulations()}
+          onStop={handleStopSimulations}
+          loading={simLoading}
+        />
+      </Box>
       <Box sx={{ display: "flex", gap: 2 }}>
         {/* Left: fleet list with search/filter */}
         <VehicleList
@@ -311,19 +647,21 @@ export default function Tracking() {
                 <>
                   {routeGeojson ? (
                     <GeoJSON
+                      key={JSON.stringify(routeGeojson?.features?.[0]?.geometry?.coordinates?.slice(0, 2))}
                       data={routeGeojson}
-                      style={{ color: "#ff6600", weight: 6, opacity: 0.95 }}
+                      style={{ color: "#1976d2", weight: 5, opacity: 0.9 }}
                     />
-                  ) : (
+                  ) : polyline.length > 1 ? (
                     <Polyline
                       positions={polyline}
                       pathOptions={{
                         color: "#2e7d32",
-                        weight: 6,
-                        opacity: 0.95,
+                        weight: 4,
+                        opacity: 0.7,
+                        dashArray: "5, 10"
                       }}
                     />
-                  )}
+                  ) : null}
                   {(selectedTrip?.stops || []).map((s, i) => (
                     <CircleMarker
                       key={s.stop_id}
@@ -395,31 +733,7 @@ export default function Tracking() {
                   </Marker>
                 ))}
             </MapContainer>
-            <Box
-              sx={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                background: "rgba(255,255,255,0.95)",
-                borderRadius: 1,
-                p: 1,
-                boxShadow: 1,
-                zIndex: 500,
-              }}>
-              <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                Ghi chú
-              </Typography>
-              <Box
-                sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
-                <Box sx={{ width: 18, height: 6, background: "#ff6600" }} />
-                <Typography variant="caption">Tuyến chọn</Typography>
-              </Box>
-              <Box
-                sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
-                <Box sx={{ width: 18, height: 6, background: "#999" }} />
-                <Typography variant="caption">Tuyến khác (mờ)</Typography>
-              </Box>
-            </Box>
+            
           </Box>
         </Paper>
       </Box>

@@ -41,36 +41,57 @@ export default function GDHoSoCuaToi() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState(null); // dropdown anchor
   const [user, setUser] = React.useState(null); // current user profile
-  const open = Boolean(anchorEl);
-  const theme = useTheme();
+
   const navigate = useNavigate();
-  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
   const handleMenuItemClick = () => setSidebarOpen(true);
   const handleLogout = () => navigate("/login");
 
-  // Demo: danh sách 2 học sinh
-  // const user_example_data = {
-  //   id: "3123410268",
-  //   name: "Đỗ Thiên Phú",
-  //   phone: "0896027930",
-  //   email: "youremail@sucksyourass.com",
-  //   relationship: "Dượng",
-  // };
-  // const user_example_data_2 = {
+  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
+  const authUserRaw = localStorage.getItem("authUser");
+
+  const parentId =
+    authUser?.user?.user_id ??
+    authUser?.user?.id ??
+    authUser?.id ??
+    authUser?.userId ??
+    null;
+  const token = authUser?.token ?? authUser?.accessToken ?? null;
 
   useEffect(() => {
-    getAllUsers().then((res) => {
-      if (res.success && res.data.items) {
-        const found = res.data.items.find(
-          (u) => u.userId === authUser.user.user_id
-        );
-        setUser(found || null);
+    let mounted = true;
+    async function load() {
+      if (!parentId) {
+        navigate("/login");
+        return;
       }
-    });
-  }, [authUser.user.user_id]);
+      try {
+        // Prefer a /users/me endpoint if you have one (safer). Fallback to getAllUsers:
+        // const profile = await fetch(`${API_URL}/users/me`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r=>r.json())
+        const res = await getAllUsers(token);
+        const items = res?.data?.items ?? res?.items ?? res ?? [];
+        if (!mounted) return;
+        // Try matching by various id fields
+        const found =
+          items.find(
+            (u) =>
+              String(u.userId ?? u.id ?? u.user_id ?? u._id) ===
+              String(parentId)
+          ) ?? null;
+        setUser(found);
+      } catch (err) {
+        console.error("Lỗi khi load profile:", err);
+        if (mounted) setUser(null);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [parentId, token, navigate]);
   // dropdown handlers
   const handleOpenDropdown = (e) => setAnchorEl(e.currentTarget);
   const handleCloseDropdown = () => setAnchorEl(null);
+
   const handleSelectStudent = (id) => {
     setCurrentId(id);
     handleCloseDropdown();

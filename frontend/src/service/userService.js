@@ -150,11 +150,13 @@ export const getAllTrips = async (params = {}) => {
  */
 export const getAssignedTripForDriver = async (driverId) => {
   try {
-    // Lấy today date (YYYY-MM-DD)
-    const today = new Date().toISOString().split('T')[0];
+    // Lấy today date (YYYY-MM-DD) theo local timezone
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
     // 1. Fetch schedules của driver để lấy danh sách scheduleIds
     const schedulesResult = await getSchedulesByDriverId(driverId);
+    
     if (!schedulesResult || !schedulesResult.success || !schedulesResult.data?.items) {
       return null;
     }
@@ -174,7 +176,7 @@ export const getAssignedTripForDriver = async (driverId) => {
     const response = await axios.get(`${API_URL}/trips`, {
       params: {
         tripDate: today,
-        status: 'SCHEDULED', // Chỉ lấy trips chưa hoàn thành
+        size: 100
       }
     });
 
@@ -184,10 +186,12 @@ export const getAssignedTripForDriver = async (driverId) => {
 
     const allTrips = response.data.data.items;
 
-    // 3. Filter trips theo scheduleIds của driver
-    const driverTrips = allTrips.filter(trip => 
-      scheduleMap[trip.scheduleId] !== undefined
-    );
+    // 3. Filter trips theo scheduleIds của driver và status
+    const driverTrips = allTrips.filter(trip => {
+      const matchSchedule = scheduleMap[trip.scheduleId] !== undefined;
+      const isActive = trip.status === 'SCHEDULED' || trip.status === 'IN_PROGRESS';
+      return matchSchedule && isActive;
+    });
 
     if (driverTrips.length === 0) {
       return null;
@@ -195,7 +199,6 @@ export const getAssignedTripForDriver = async (driverId) => {
 
     // 4. Sort trips theo actual_start_time (hoặc schedule startTime nếu chưa có actual)
     const sortedTrips = driverTrips.sort((a, b) => {
-      // Ưu tiên actual_start_time, nếu không có thì dùng schedule.startTime
       const scheduleA = scheduleMap[a.scheduleId];
       const scheduleB = scheduleMap[b.scheduleId];
       
@@ -207,7 +210,7 @@ export const getAssignedTripForDriver = async (driverId) => {
         ? new Date(b.actualStartTime)
         : (scheduleB?.startTime ? new Date(`2000-01-01T${scheduleB.startTime}`) : new Date(0));
       
-      return timeA - timeB; // Sớm nhất đến muộn nhất
+      return timeA - timeB;
     });
 
     // 5. Return trip SỚM NHẤT

@@ -12,3 +12,14 @@ export async function getAllPickupRecords() {
         return null;
     }
 }
+
+export async function getPickupRecordsByParentId(parentId) {
+    try {
+        const res = await fetch(`${API_URL}/parents/${parentId}/pickup-records`);
+        const data = await res.json();
+        return data;
+    } catch (err) {
+        console.error("Lỗi khi fetch pickup records by parentId:", err);
+        return null;
+    }
+}

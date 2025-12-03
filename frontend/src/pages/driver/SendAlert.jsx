@@ -20,7 +20,7 @@ import BuildIcon from "@mui/icons-material/Build";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CloseIcon from "@mui/icons-material/Close";
-import { getAllUsers , sendAlert } from "../../service/userService";
+import { getAllUsers , sendAlert } from "../../service/userService"; 
 
 const SendAlert = ({ onBack }) => {
   const [parents, setParents] = useState([]);

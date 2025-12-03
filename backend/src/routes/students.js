@@ -8,6 +8,7 @@ const { createStudentRequest, updateStudentRequest, listStudentsQuery } = requir
 
 router.get('/students', listStudentsQuery, handleValidation, studentController.listStudents);
 router.get('/students/:studentId', studentController.getStudent);
+router.get('/students/:studentId/bus-info', studentController.getStudentBusInfo);
 router.post('/students', createStudentRequest, handleValidation, studentController.createStudent);
 router.put('/students/:studentId', updateStudentRequest, handleValidation, studentController.updateStudent);
 router.delete('/students/:studentId', studentController.deleteStudent);

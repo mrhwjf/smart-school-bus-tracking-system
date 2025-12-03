@@ -1,4 +1,4 @@
-const { Trip, RoutePassenger } = require('../models');
+const { Trip, RoutePassenger, Schedule, Route, Bus, Driver, User, Stop, RouteStop } = require('../models');
 
 // Trips
 const TRIP_PK = 'trip_id';
@@ -19,11 +19,36 @@ async function list({ filter = {}, sort, page = 0, pageSize = 10 } = {}, options
 	const limit = pageSize;
 	const offset = page * pageSize;
 
+	// Include all relations for tracking page
+	const include = [
+		{
+			model: Schedule,
+			include: [
+				{
+					model: Route,
+					include: [
+						{
+							model: Stop,
+							through: { attributes: ['stop_order'] },
+							attributes: ['stop_id', 'name', 'latitude', 'longitude', 'address']
+						}
+					]
+				},
+				{ model: Bus },
+				{
+					model: Driver,
+					include: [{ model: User, attributes: ['name', 'phone_number'] }]
+				}
+			]
+		}
+	];
+
 	const { rows, count } = await Trip.findAndCountAll({
 		where: filter,
 		order,
 		limit,
 		offset,
+		include,
 		...options,
 	});
 

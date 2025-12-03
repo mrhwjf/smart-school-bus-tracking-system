@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const { sequelize } = require('./config/dbConfig');
@@ -10,6 +11,11 @@ const globalExceptionHandler = require('./exception/globalExceptionHandler');
 const swaggerDocument = require('./config/swagger.json');
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const { initializeSocket } = require('./services/socketService');
+const io = initializeSocket(server);
 
 // Security headers
 app.use(helmet());
@@ -69,4 +75,4 @@ app.use('/api/v1', require('./routes'));
 // Error handler
 app.use(globalExceptionHandler);
 
-module.exports = app;
+module.exports = { app, server, io };

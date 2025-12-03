@@ -49,4 +49,21 @@ async function deleteStudent(req, res, next) {
 	} catch (err) { next(err); }
 }
 
-module.exports = { listStudents, getStudent, createStudent, updateStudent, deleteStudent };
+// Get student's bus information
+async function getStudentBusInfo(req, res, next) {
+	try {
+		const { studentId } = req.params;
+		const result = await studentService.getStudentBusInfo(Number(studentId));
+		const status = result.success ? 200 : 404;
+		res.status(status).json(result);
+	} catch (err) { next(err); }
+}
+
+module.exports = { 
+	listStudents, 
+	getStudent, 
+	createStudent, 
+	updateStudent, 
+	deleteStudent,
+	getStudentBusInfo 
+};

@@ -118,13 +118,23 @@ const PickUpMap = ({ onTripComplete }) => {
         setLoadingTrip(true);
         setTripError(null);
 
+        console.log('🚀 [PickUpMap] Starting fetch for driver:', DRIVER_ID);
+
+        if (!DRIVER_ID) {
+          setTripError("Không tìm thấy thông tin tài xế. Vui lòng đăng nhập lại.");
+          return;
+        }
+
         // 1. Lấy trip được phân công hôm nay
         const trip = await getAssignedTripForDriver(DRIVER_ID);
         
         if (!trip) {
-          setTripError("Không có chuyến đi nào được phân công hôm nay");
+          const today = new Date().toLocaleDateString('vi-VN');
+          setTripError(`Không có chuyến đi nào được phân công cho ngày ${today}. Kiểm tra lại trong "Thời gian biểu".`);
           return;
         }
+
+        console.log('✅ [PickUpMap] Trip loaded:', trip);
 
         // 2. Lấy schedule để biết routeId và route details
         const scheduleResult = await getScheduleById(trip.scheduleId);
@@ -353,10 +363,15 @@ const PickUpMap = ({ onTripComplete }) => {
     // Gọi API để cập nhật pickup record
     try {
       if (student.recordId) {
+        // Get current time in local timezone (GMT+7)
+        const now = new Date();
+        const localTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+        
         // Update existing record
         await updatePickupRecord(student.recordId, {
           status: newCheckedState ? "PICKED_UP" : "WAITING",
-          recordedAt: new Date().toISOString(),
+          stopId: currentStop.stop_id, // Thêm stopId
+          recordedAt: localTime,
         });
       }
     } catch (error) {
@@ -377,13 +392,18 @@ const PickUpMap = ({ onTripComplete }) => {
       
       // Update MISSED records cho học sinh vắng
       try {
+        // Get current time in local timezone (GMT+7)
+        const now = new Date();
+        const localTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+        
         await Promise.all(
           notPicked
             .filter(student => student.recordId) // Only update if recordId exists
             .map(student =>
               updatePickupRecord(student.recordId, {
                 status: "MISSED",
-                recordedAt: new Date().toISOString(),
+                stopId: currentStop.stop_id,
+                recordedAt: localTime,
               })
             )
         );
@@ -408,10 +428,14 @@ const PickUpMap = ({ onTripComplete }) => {
 
   const completeTrip = async () => {
     try {
+      // Get current time in local timezone (GMT+7)
+      const now = new Date();
+      const localTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+      
       // Update trip status to COMPLETED
       await updateTrip(tripData.trip_id, {
         status: 'COMPLETED',
-        actualEndTime: new Date().toISOString(),
+        actualEndTime: localTime,
       });
       
       console.log('Trip completed successfully');

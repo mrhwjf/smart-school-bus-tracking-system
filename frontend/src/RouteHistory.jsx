@@ -19,7 +19,17 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
-import { getAllPickupRecords } from "./services/pickupRecordService";
+import { getPickupRecordsByParentId } from "./services/pickupRecordService";
+
+const toLocalDateString = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 /**
  * RouteHistory (Pickup Records)
@@ -42,8 +52,9 @@ export default function RouteHistory() {
       try {
         setLoading(true);
         setError(null);
-        const res = await getAllPickupRecords();
-        const items = res?.data?.items ?? [];
+        const parentId = Number(JSON.parse(localStorage.getItem("authUser")).user.user_id);
+        const res = await getPickupRecordsByParentId(parentId);
+        const items = res?.data ?? [];
         // build groups keyed by tripId
         const map = new Map();
         items.forEach((rec) => {
@@ -61,9 +72,9 @@ export default function RouteHistory() {
             const tb = b?.recordedAt ? new Date(b.recordedAt).getTime() : 0;
             return ta - tb;
           });
-          // Derive tripDate from first record's recordedAt (YYYY-MM-DD)
-          const first = recs[0];
-          const tripDate = first?.recordedAt ? first.recordedAt.slice(0, 10) : null;
+          // Derive tripDate from first record that has recordedAt (YYYY-MM-DD in local timezone)
+          const firstWithDate = recs.find((record) => toLocalDateString(record?.recordedAt));
+          const tripDate = firstWithDate ? toLocalDateString(firstWithDate.recordedAt) : null;
           return { tripId: g.tripId, tripDate, records: recs };
         });
 
@@ -90,10 +101,16 @@ export default function RouteHistory() {
     };
   }, []);
 
-  // Filter groups by selected date (match tripDate)
+  // Filter groups by selected date (match recordedAt within records)
   const visible = useMemo(() => {
     if (!filterDate) return groups;
-    return groups.filter((g) => g.tripDate === filterDate);
+    return groups
+      .map((group) => {
+        const recordsOnDate = group.records.filter((record) => toLocalDateString(record?.recordedAt) === filterDate);
+        if (!recordsOnDate.length) return null;
+        return { ...group, tripDate: filterDate, records: recordsOnDate };
+      })
+      .filter(Boolean);
   }, [groups, filterDate]);
 
   return (

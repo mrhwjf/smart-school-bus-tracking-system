@@ -21,5 +21,6 @@ router.get('/pickup-records/:recordId', tripController.getPickupRecord);
 router.post('/pickup-records', createPickupRecordRequest, handleValidation, tripController.createPickupRecord);
 router.put('/pickup-records/:recordId', updatePickupRecordRequest, handleValidation, tripController.updatePickupRecord);
 router.delete('/pickup-records/:recordId', tripController.deletePickupRecord);
+router.get('/parents/:parentId/pickup-records', tripController.getAllByParentId);
 
 module.exports = router;

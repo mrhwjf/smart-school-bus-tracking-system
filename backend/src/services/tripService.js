@@ -93,9 +93,16 @@ async function deletePickupRecord(recordId, options = {}) {
 	return apiResponse.success('Pickup record deleted successfully', { deleted });
 }
 
+async function getAllByParentId(parentId, options = {}) {
+	const records = await PickupRecordRepository.getAllByParentId(parentId, options);
+	const items = (records || []).map(toPickupRecordDto);
+	return apiResponse.success('Pickup records fetched successfully', items);
+}
+
 module.exports = {
 	// Trips
 	listTrips, getTripById, createTrip, updateTrip, deleteTrip,
 	// Pickup records
 	listPickupRecords, createPickupRecord, updatePickupRecord, getPickupRecordById, deletePickupRecord,
+	getAllByParentId,
 };

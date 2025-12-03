@@ -1,4 +1,4 @@
-const { PickupRecord } = require('../models');
+const { PickupRecord, Student, Stop } = require('../models');
 
 const PK = 'record_id';
 
@@ -54,6 +54,23 @@ async function bulkDelete(where = {}, options = {}) {
 	return PickupRecord.destroy({ where, ...options });
 }
 
+async function getAllByParentId(parentId, options = {}) {
+	const records = await PickupRecord.findAll({
+		include: [
+			{
+				model: Student.scope('withClass'),
+				where: { parent_id: parentId },
+			},
+			{
+				model: Stop,
+				col: 'stop_id',
+			},
+		],
+		...options,
+	});
+	return records;
+}
+
 module.exports = {
 	findById,
 	findOne,
@@ -63,4 +80,5 @@ module.exports = {
 	updateById,
 	deleteById,
 	bulkDelete,
+	getAllByParentId,
 };
