@@ -26,3 +26,4 @@ dist-ssr
 # Environment files (optional, for safety)
 .env
 .env.*
+.vercel

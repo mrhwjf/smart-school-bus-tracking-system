@@ -1,16 +1,8 @@
 import axios from 'axios'
+import { API_ORIGIN, API_URL } from '../config/api'
 
-// Prefer VITE_BASE_API_URL, fall back to VITE_API_BASE_URL
-const API_BASE = import.meta.env.VITE_BASE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'
-
-// Derive the origin (protocol + host) from API_BASE to access non-versioned routes like /auth
-let ORIGIN_BASE = 'http://localhost:5000'
-try {
-  const u = new URL(API_BASE)
-  ORIGIN_BASE = `${u.protocol}//${u.host}`
-} catch {
-  // keep default
-}
+const API_BASE = API_URL
+const ORIGIN_BASE = API_ORIGIN
 
 function createAxios(baseURL) {
   const instance = axios.create({
